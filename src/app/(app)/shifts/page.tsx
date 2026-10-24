@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getSession } from "@/lib/session";
 import { Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { IconCoffee, IconMoon, IconSun } from "@/components/icons";
@@ -40,15 +41,29 @@ function Timeline({ start, end }: { start: string; end: string }) {
 }
 
 export default async function ShiftsPage() {
-  const { supabase } = await getSession();
-  const { data: shifts } = await supabase
-    .from("shifts")
-    .select("id, name, start_time, end_time, break_minutes, crosses_midnight")
-    .order("start_time");
+  const { supabase, role, employeeId } = await getSession();
+  const [{ data: shifts }, { data: open }] = await Promise.all([
+    supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, crosses_midnight").order("start_time"),
+    supabase.from("shift_swaps").select("status, requester_id, target_id, manager_at, accounting_at").in("status", ["pending_peer", "pending_approval"]),
+  ]);
+  // คำขอแลกกะที่รอฉันอยู่: เพื่อนขอแลกกับฉัน หรือรออนุมัติ (สำหรับหัวหน้า/บัญชี/CEO)
+  const waiting = (open ?? []).filter((r) =>
+    r.status === "pending_peer"
+      ? r.target_id === employeeId
+      : r.requester_id !== employeeId &&
+        r.target_id !== employeeId &&
+        ((role === "accounting" && !r.accounting_at) ||
+          (role === "manager" && !r.manager_at) ||
+          (role === "ceo" && (!r.manager_at || !r.accounting_at))),
+  ).length;
 
   return (
     <div className="space-y-6">
-      <PageHeader eyebrow="ตารางเวลา" title="กะการทำงาน" description={`${shifts?.length ?? 0} กะที่ใช้ในบริษัท`} />
+      <PageHeader eyebrow="ตารางเวลา" title="กะการทำงาน" description={`${shifts?.length ?? 0} กะที่ใช้ในบริษัท`}>
+        <Link href="/shifts/swaps" className="inline-flex h-9 items-center gap-1.5 self-start rounded-lg bg-zinc-900 px-3 text-[13px] font-medium text-white hover:bg-zinc-800 sm:self-auto">
+          ⇄ แลกกะ{waiting ? <span className="rounded-full bg-white/20 px-1.5 text-[11px]">{waiting}</span> : null}
+        </Link>
+      </PageHeader>
 
       {!shifts || shifts.length === 0 ? (
         <Card>

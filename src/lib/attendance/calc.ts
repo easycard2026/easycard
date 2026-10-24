@@ -86,7 +86,9 @@ export function resolveShift(opts: {
   defaultShift: Shift | null;
   daysOff: number[];
   isHoliday: boolean;
+  swapped?: Shift | null; // แลกกะที่อนุมัติแล้ว (ชนะทุกกรณี) null = แลกไปเป็นวันหยุด, undefined = ไม่ได้แลก
 }): { shift: Shift | null; reason: "assigned" | "default" | "holiday" | "day_off" | "no_shift" } {
+  if (opts.swapped !== undefined) return opts.swapped ? { shift: opts.swapped, reason: "assigned" } : { shift: null, reason: "day_off" };
   if (opts.assigned) return { shift: opts.assigned, reason: "assigned" };
   if (opts.isHoliday) return { shift: null, reason: "holiday" };
   if (opts.daysOff.includes(weekday(opts.date))) return { shift: null, reason: "day_off" };
