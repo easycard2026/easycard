@@ -20,14 +20,22 @@
 | ผู้จัดการ | ตัวเอง + ลูกทีม (`employees.manager_id`) | จัดกะลูกทีมได้ | - |
 | พนักงาน | ตัวเอง | - | - |
 
-## ติดตั้ง
+## ติดตั้งบนเครื่อง
 
-1. คัดลอก `.env.example` เป็น `.env.local` แล้วใส่ URL และ publishable key ของโปรเจกต์ Supabase
-2. รัน SQL ใน `supabase/migrations` บนโปรเจกต์ Supabase (ตามลำดับชื่อไฟล์)
-3. `npm install` แล้ว `npm run dev` เปิด http://localhost:3000
+1. `npm install` แล้ว `npm run dev` เปิด http://localhost:3000
+2. ค่าเชื่อมต่อ Supabase อยู่ใน `src/lib/supabase/config.ts` (ตั้ง `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` ใน `.env.local` เพื่อใช้โปรเจกต์อื่นได้)
+3. โครงสร้างฐานข้อมูลอยู่ใน `supabase/migrations` (รันตามลำดับชื่อไฟล์)
 
 ผู้ใช้ใหม่ที่สร้างใน Supabase Auth จะได้ Role `employee` อัตโนมัติ CEO เปลี่ยน Role และผูกกับข้อมูลพนักงานได้ในตาราง `profiles`
 
-## Deploy บน Vercel
+## Deploy บน Cloudflare Workers
 
-Import repo นี้ใน Vercel แล้วตั้ง Environment Variables `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+ใช้ [OpenNext](https://opennext.js.org/cloudflare) แปลง Next.js ให้รันบน Cloudflare Workers ตั้งค่าอยู่ใน `wrangler.jsonc` และ `open-next.config.ts`
+
+ตั้งครั้งเดียวใน Cloudflare Dashboard: Workers & Pages → Create → Import a repository → เลือก repo นี้ แล้วตั้ง
+
+- Project name: `easycard-hr` (ต้องตรงกับ `name` ใน `wrangler.jsonc`)
+- Build command: `npx opennextjs-cloudflare build`
+- Deploy command: `npx opennextjs-cloudflare deploy`
+
+หลังจากนั้นทุกครั้งที่ push เข้า `main` Cloudflare จะ build และ deploy ให้อัตโนมัติ ทดสอบแบบ Cloudflare บนเครื่องได้ด้วย `npm run preview`
