@@ -3,6 +3,8 @@ import { MENU, ROLE_LABEL } from "@/lib/roles";
 import { BottomNav, SideNav } from "@/components/nav";
 import { Avatar, Logo } from "@/components/ui";
 import { IconLogout } from "@/components/icons";
+import { Ticker } from "@/components/ticker";
+import { tickerAnnouncements } from "@/lib/announcements";
 
 function SignOutButton({ compact = false }: { compact?: boolean }) {
   return (
@@ -19,7 +21,8 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { role, name } = await getSession();
+  const { supabase, role, name } = await getSession();
+  const news = await tickerAnnouncements(supabase);
   const items = MENU.filter((m) => m.roles.includes(role));
   const [first, ...rest] = name.split(" ");
 
@@ -51,6 +54,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <SignOutButton compact />
         </div>
       </header>
+
+      <div className="sticky top-[calc(3.25rem+1px)] z-10 md:top-0 md:ml-56">
+        <Ticker items={news} />
+      </div>
 
       <main className="px-4 pb-24 pt-5 sm:px-6 md:ml-56 md:px-8 md:pb-10 md:pt-7">
         <div className="mx-auto max-w-6xl">{children}</div>
