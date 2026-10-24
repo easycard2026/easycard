@@ -6,7 +6,7 @@ import { serviceLength, thaiDate } from "@/lib/format";
 import { Avatar, Badge, Card, PageHeader } from "@/components/ui";
 import { SubmitButton, inputClass } from "@/components/form";
 import { BackLink, Notice } from "@/components/notice";
-import { deleteDocument, updateStartDate } from "./actions";
+import { deleteDocument, updatePosition, updateStartDate } from "./actions";
 import { UploadForm } from "./upload-form";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -23,10 +23,10 @@ export default async function EmployeePage({ params, searchParams }: { params: P
   const sp = await searchParams;
   const { supabase, role, user, employeeId: me } = await getSession();
 
-  const [{ data: e }, { data: docs }] = await Promise.all([
+  const [{ data: e }, { data: docs }, { data: positions }] = await Promise.all([
     supabase
       .from("employees")
-      .select("id, code, first_name, last_name, start_date, probation_end_date, probation_status, active, departments(name)")
+      .select("id, code, first_name, last_name, start_date, probation_end_date, probation_status, active, position_id, departments(name), positions(name)")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -34,6 +34,7 @@ export default async function EmployeePage({ params, searchParams }: { params: P
       .select("id, category, title, file_name, size_bytes, uploaded_by, created_at")
       .eq("employee_id", id)
       .order("created_at", { ascending: false }),
+    supabase.from("positions").select("id, name").order("name"),
   ]);
   if (!e) notFound();
 
@@ -41,12 +42,13 @@ export default async function EmployeePage({ params, searchParams }: { params: P
   const isSelf = id === me;
   const canUpload = isAdmin || isSelf;
   const department = (e.departments as unknown as { name: string } | null)?.name;
+  const position = (e.positions as unknown as { name: string } | null)?.name;
   const onProbation = e.probation_status === "on_probation" || e.probation_status === "extended";
 
   return (
     <div className="space-y-5">
       {role !== "employee" && <BackLink href="/employees">พนักงาน</BackLink>}
-      <PageHeader title={`${e.first_name} ${e.last_name}`} description={`${e.code}${department ? ` · ${department}` : ""}`}>
+      <PageHeader title={`${e.first_name} ${e.last_name}`} description={[e.code, position, department].filter(Boolean).join(" · ")}>
         <Avatar first={e.first_name} last={e.last_name} seed={e.code} />
       </PageHeader>
       <Notice ok={sp.ok} error={sp.error} />
@@ -55,6 +57,8 @@ export default async function EmployeePage({ params, searchParams }: { params: P
         <Card className="rise p-4">
           <h2 className="font-semibold">ข้อมูลการทำงาน</h2>
           <dl className="mt-2 divide-y divide-zinc-100">
+            <Row label="ตำแหน่ง">{position ?? <span className="text-zinc-300">ไม่ระบุ</span>}</Row>
+            <Row label="แผนก">{department ?? <span className="text-zinc-300">ไม่ระบุ</span>}</Row>
             <Row label="วันเริ่มงาน">{thaiDate(e.start_date, "long")}</Row>
             <Row label="อายุงาน">{serviceLength(e.start_date)}</Row>
             <Row label="สถานะ">
@@ -64,7 +68,19 @@ export default async function EmployeePage({ params, searchParams }: { params: P
             {!e.active && <Row label="การจ้างงาน">พ้นสภาพ</Row>}
           </dl>
           {isAdmin && (
-            <form action={updateStartDate} className="mt-3 flex items-center gap-2 border-t border-zinc-100 pt-3">
+            <form action={updatePosition} className="mt-3 flex items-center gap-2 border-t border-zinc-100 pt-3">
+              <input type="hidden" name="employee_id" value={id} />
+              <select name="position_id" defaultValue={e.position_id ?? ""} aria-label="ตำแหน่ง" className={`${inputClass} h-8 text-[13px]`}>
+                <option value="">ไม่ระบุตำแหน่ง</option>
+                {(positions ?? []).map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              <SubmitButton size="sm" variant="secondary">ตั้งตำแหน่ง</SubmitButton>
+            </form>
+          )}
+          {isAdmin && (
+            <form action={updateStartDate} className="mt-2 flex items-center gap-2">
               <input type="hidden" name="employee_id" value={id} />
               <input name="start_date" type="date" required defaultValue={e.start_date} aria-label="แก้วันเริ่มงาน" className={`${inputClass} h-8 text-[13px]`} />
               <SubmitButton size="sm" variant="secondary">แก้วันเริ่มงาน</SubmitButton>

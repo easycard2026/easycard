@@ -17,6 +17,7 @@ export type EmployeeRow = {
   probation_end_date: string;
   probation_status: string;
   department: string | null;
+  position: string | null;
 };
 
 const FILTERS = [
@@ -58,7 +59,7 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
     return employees.filter(
       (e) =>
         matches(e, filter) &&
-        (!needle || `${e.code} ${e.first_name} ${e.last_name} ${e.department ?? ""}`.toLowerCase().includes(needle)),
+        (!needle || `${e.code} ${e.first_name} ${e.last_name} ${e.department ?? ""} ${e.position ?? ""}`.toLowerCase().includes(needle)),
     );
   }, [employees, q, filter]);
 
@@ -87,7 +88,7 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="ค้นหาชื่อ รหัส หรือแผนก"
+              placeholder="ค้นหาชื่อ รหัส ตำแหน่ง หรือแผนก"
               className="h-8 w-full rounded-lg border border-zinc-200 bg-white pl-8 pr-3 text-[13px] outline-none transition placeholder:text-zinc-400 focus:border-zinc-400 focus:ring-4 focus:ring-zinc-100"
             />
           </label>
@@ -118,7 +119,7 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
                         <Avatar first={e.first_name} last={e.last_name} seed={e.code} size="sm" />
                         <div>
                           <Link href={`/employees/${e.id}`} className="font-medium text-zinc-900 hover:underline">{e.first_name} {e.last_name}</Link>
-                          <p className="tabular text-[11px] text-zinc-400">{e.code}</p>
+                          <p className="tabular text-[11px] text-zinc-400">{e.code}{e.position && ` · ${e.position}`}</p>
                         </div>
                       </div>
                     </td>
@@ -144,7 +145,7 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
                       <div className="min-w-0">
                         <p className="truncate text-[13px] font-medium">{e.first_name} {e.last_name}</p>
                         <p className="truncate text-[11px] text-zinc-400">
-                          {e.code} · {e.department ?? "ไม่ระบุแผนก"}
+                          {[e.code, e.position, e.department ?? "ไม่ระบุแผนก"].filter(Boolean).join(" · ")}
                         </p>
                       </div>
                       <Badge tone={PROBATION_TONE[e.probation_status]}>{PROBATION_LABEL[e.probation_status]}</Badge>

@@ -37,3 +37,15 @@ export async function updateStartDate(formData: FormData) {
   revalidatePath("/employees");
   back(path, "ok", "บันทึกวันเริ่มงานแล้ว");
 }
+
+export async function updatePosition(formData: FormData) {
+  const { supabase } = await getSession();
+  const emp = String(formData.get("employee_id"));
+  const path = `/employees/${emp}`;
+  const position_id = String(formData.get("position_id") ?? "") || null;
+  const { error, count } = await supabase.from("employees").update({ position_id }, { count: "exact" }).eq("id", emp);
+  if (error || !count) back(path, "error", "บันทึกตำแหน่งไม่สำเร็จ (เฉพาะ CEO และบัญชีแก้ได้)");
+  revalidatePath(path);
+  revalidatePath("/employees");
+  back(path, "ok", "บันทึกตำแหน่งแล้ว");
+}
