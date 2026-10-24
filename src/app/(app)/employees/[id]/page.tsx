@@ -6,7 +6,8 @@ import { serviceLength, thaiDate } from "@/lib/format";
 import { Avatar, Badge, Card, PageHeader } from "@/components/ui";
 import { SubmitButton, inputClass } from "@/components/form";
 import { BackLink, Notice } from "@/components/notice";
-import { deleteDocument, updatePosition, updateStartDate } from "./actions";
+import { BANKS, accountProblem, bankLabel } from "@/lib/payroll/bank";
+import { deleteDocument, updateBank, updatePosition, updateStartDate } from "./actions";
 import { UploadForm } from "./upload-form";
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -26,7 +27,7 @@ export default async function EmployeePage({ params, searchParams }: { params: P
   const [{ data: e }, { data: docs }, { data: positions }] = await Promise.all([
     supabase
       .from("employees")
-      .select("id, code, first_name, last_name, start_date, probation_end_date, probation_status, active, position_id, departments(name), positions(name)")
+      .select("id, code, first_name, last_name, start_date, probation_end_date, probation_status, active, position_id, bank_code, bank_account, bank_account_name, departments(name), positions(name)")
       .eq("id", id)
       .maybeSingle(),
     supabase
@@ -88,7 +89,41 @@ export default async function EmployeePage({ params, searchParams }: { params: P
           )}
         </Card>
 
-        <Card className="rise p-4" >
+        {(isAdmin || isSelf) && (
+          <Card className="rise p-4 lg:col-start-1">
+            <h2 className="font-semibold">บัญชีรับเงินเดือน</h2>
+            {e.bank_code || e.bank_account ? (
+              <dl className="mt-2 divide-y divide-zinc-100">
+                <Row label="ธนาคาร">{bankLabel(e.bank_code) ?? <span className="text-zinc-300">ไม่ระบุ</span>}</Row>
+                <Row label="เลขบัญชี"><span className="tabular">{e.bank_account}</span></Row>
+                <Row label="ชื่อบัญชี">{e.bank_account_name || `${e.first_name} ${e.last_name}`}</Row>
+              </dl>
+            ) : (
+              <p className="mt-1 text-[13px] text-zinc-400">ยังไม่มีข้อมูลบัญชี</p>
+            )}
+            {isAdmin && accountProblem(e.bank_code, e.bank_account) && (
+              <p className="mt-2 text-[13px] text-amber-700">{accountProblem(e.bank_code, e.bank_account)} จึงยังไม่อยู่ในไฟล์โอนเงินเดือน</p>
+            )}
+            {isAdmin && (
+              <form action={updateBank} className="mt-3 grid gap-2 border-t border-zinc-100 pt-3">
+                <input type="hidden" name="employee_id" value={id} />
+                <select name="bank_code" defaultValue={e.bank_code ?? ""} aria-label="ธนาคาร" className={`${inputClass} h-9 text-[13px]`}>
+                  <option value="">เลือกธนาคาร</option>
+                  {BANKS.map((b) => (
+                    <option key={b.code} value={b.code}>{b.short} {b.name}</option>
+                  ))}
+                </select>
+                <input name="bank_account" inputMode="numeric" defaultValue={e.bank_account ?? ""} placeholder="เลขบัญชี" aria-label="เลขบัญชี" className={`${inputClass} h-9 text-[13px]`} />
+                <input name="bank_account_name" defaultValue={e.bank_account_name ?? ""} placeholder={`ชื่อบัญชี (ว่างไว้ = ${e.first_name} ${e.last_name})`} aria-label="ชื่อบัญชี" className={`${inputClass} h-9 text-[13px]`} />
+                <div className="flex justify-end">
+                  <SubmitButton size="sm" variant="secondary">บันทึกบัญชี</SubmitButton>
+                </div>
+              </form>
+            )}
+          </Card>
+        )}
+
+        <Card className="rise p-4 lg:col-start-2 lg:row-span-2 lg:row-start-1">
           <div className="flex items-baseline justify-between gap-3">
             <h2 className="font-semibold">เอกสาร</h2>
             <span className="tabular text-xs text-zinc-400">{docs?.length ?? 0} ไฟล์</span>
