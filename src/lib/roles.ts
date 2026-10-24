@@ -17,7 +17,7 @@ export const MENU: MenuItem[] = [
   { href: "/employees", icon: "users", label: "พนักงาน", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/shifts", icon: "clock", label: "กะการทำงาน", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/time-import", icon: "upload", label: "นำเข้าไฟล์เครื่องสแกน", roles: ["ceo", "accounting"], soon: true },
-  { href: "/attendance", icon: "fingerprint", label: "เวลาเข้าออก", roles: ["ceo", "accounting", "manager", "employee"], soon: true },
+  { href: "/attendance", icon: "fingerprint", label: "เวลาเข้าออก", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/ot", icon: "timer", label: "OT", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/payroll", icon: "wallet", label: "เงินเดือน", roles: ["ceo", "accounting"] },
   { href: "/payslips", icon: "receipt", label: "สลิปเงินเดือน", roles: ["ceo", "accounting", "manager", "employee"] },
