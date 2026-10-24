@@ -9,6 +9,7 @@ import {
   IconClock,
   IconFingerprint,
   IconHome,
+  IconMegaphone,
   IconMore,
   IconPalm,
   IconReceipt,
@@ -31,6 +32,7 @@ const ICONS: Record<MenuIcon, (p: { className?: string }) => React.ReactElement>
   shield: IconShield,
   calendar: IconCalendar,
   holiday: IconPalm,
+  megaphone: IconMegaphone,
 };
 
 function isActive(path: string, href: string) {
