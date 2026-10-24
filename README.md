@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Easycard HR
 
-## Getting Started
+ระบบบริหารงานบุคคลและเงินเดือนสำหรับบริษัทประมาณ 50 คน หลายกะ (Next.js + Supabase)
 
-First, run the development server:
+## สถานะ
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- [x] ส่วนที่ 1: Login 4 Role (CEO, บัญชี, ผู้จัดการ, พนักงาน), ข้อมูลพนักงาน แผนก กะ วันหยุด และสถานะทดลองงาน
+- [ ] ส่วนที่ 2: นำเข้าไฟล์จากเครื่องบันทึกเวลา
+- [ ] ส่วนที่ 3: ขอและอนุมัติ OT
+- [ ] ส่วนที่ 4: คำนวณเงินเดือน ประกันสังคม ภาษี
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## สิทธิ์
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+สิทธิ์ถูกบังคับที่ฐานข้อมูลด้วย Row Level Security (ดู `supabase/migrations`)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Role | เห็นพนักงาน | แก้ข้อมูลพนักงาน/กะ | เปลี่ยน Role ผู้ใช้ |
+| --- | --- | --- | --- |
+| CEO | ทุกคน | ได้ | ได้ |
+| บัญชี | ทุกคน | ได้ | - |
+| ผู้จัดการ | ตัวเอง + ลูกทีม (`employees.manager_id`) | จัดกะลูกทีมได้ | - |
+| พนักงาน | ตัวเอง | - | - |
 
-## Learn More
+## ติดตั้ง
 
-To learn more about Next.js, take a look at the following resources:
+1. คัดลอก `.env.example` เป็น `.env.local` แล้วใส่ URL และ publishable key ของโปรเจกต์ Supabase
+2. รัน SQL ใน `supabase/migrations` บนโปรเจกต์ Supabase (ตามลำดับชื่อไฟล์)
+3. `npm install` แล้ว `npm run dev` เปิด http://localhost:3000
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+ผู้ใช้ใหม่ที่สร้างใน Supabase Auth จะได้ Role `employee` อัตโนมัติ CEO เปลี่ยน Role และผูกกับข้อมูลพนักงานได้ในตาราง `profiles`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Deploy บน Vercel
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Import repo นี้ใน Vercel แล้วตั้ง Environment Variables `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY`
