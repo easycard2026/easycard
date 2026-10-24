@@ -1,10 +1,60 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-thai), system-ui, sans-serif;
+  --font-sans: var(--font-thai), ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme {
+  /* สีหลักของแบรนด์: ม่วงอมน้ำเงิน ใช้แค่จุดที่ต้องการเน้น */
+  --color-brand-50: #f1f2ff;
+  --color-brand-100: #e4e6ff;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+}
+
+:root {
+  color-scheme: light;
 }
 
 body {
-  background: #f6f7f9;
-  color: #1f2937;
+  background: #fafafa;
+  color: #18181b;
+  font-feature-settings: "tnum" 0;
+}
+
+::selection {
+  background: var(--color-brand-100);
+}
+
+/* ตัวเลขเรียงตรงกันในตาราง */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ซ่อนแถบเลื่อนของเมนูแนวนอนบนมือถือ */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rise {
+  animation: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rise {
+    animation: none;
+  }
 }

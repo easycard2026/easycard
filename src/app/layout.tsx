@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Sans_Thai } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Anuphan } from "next/font/google";
 import "./globals.css";
 
-const font = IBM_Plex_Sans_Thai({
+const font = Anuphan({
   subsets: ["thai", "latin"],
-  weight: ["400", "500", "600"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-thai",
 });
 
@@ -13,10 +13,14 @@ export const metadata: Metadata = {
   description: "ระบบบริหารงานบุคคลและเงินเดือน",
 };
 
+export const viewport: Viewport = {
+  themeColor: "#fafafa",
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th">
-      <body className={`${font.variable} antialiased`}>{children}</body>
+      <body className={`${font.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }
