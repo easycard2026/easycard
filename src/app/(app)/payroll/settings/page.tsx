@@ -3,7 +3,8 @@ import { getSession } from "@/lib/session";
 import { Card, PageHeader } from "@/components/ui";
 import { Field, SubmitButton, inputClass } from "@/components/form";
 import { BackLink, Notice } from "@/components/notice";
-import { saveSettings } from "./actions";
+import { PAYERS } from "@/lib/payroll/bank";
+import { saveBankSettings, saveSettings } from "./actions";
 
 function Num({ name, label, value, hint, step = "any" }: { name: string; label: string; value: number | string; hint?: string; step?: string }) {
   return (
@@ -17,7 +18,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const { supabase, role } = await getSession();
   if (role !== "ceo" && role !== "accounting") redirect("/");
-  const { data: s } = await supabase.from("payroll_settings").select("*").single();
+  const [{ data: s }, { data: bank }] = await Promise.all([
+    supabase.from("payroll_settings").select("*").single(),
+    supabase.from("payroll_bank_settings").select("*").maybeSingle(),
+  ]);
   if (!s) return null;
   const brackets = (s.tax_brackets as { upto: number | null; rate: number }[]) ?? [];
   const rows = [...brackets, ...Array(Math.max(0, 10 - brackets.length)).fill(null)];
@@ -84,6 +88,40 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         <div className="flex justify-end">
           <SubmitButton>บันทึกค่าตั้งค่า</SubmitButton>
+        </div>
+      </form>
+
+      <form action={saveBankSettings} id="bank" className="space-y-4">
+        <Card className="rise p-4">
+          <h2 className="font-semibold">บัญชีบริษัทสำหรับโอนเงินเดือน</h2>
+          <p className="text-[13px] text-zinc-400">ใช้ในไฟล์โอนเงินเดือน รหัสบริษัทคือรหัสที่ธนาคารให้มาตอนสมัครบริการจ่ายเงินเดือน (ถ้ามี) เห็นเฉพาะ CEO และบัญชี</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <Field label="ชื่อบริษัท">
+              <input name="company_name" defaultValue={bank?.company_name ?? ""} className={inputClass} />
+            </Field>
+            <Field label="พนักงานที่ใช้ธนาคารอื่น โอนจาก" hint="พนักงาน SCB โอนจาก SCB พนักงานกสิกรโอนจากกสิกรเสมอ">
+              <select name="other_bank_payer" defaultValue={bank?.other_bank_payer ?? "kbank"} className={inputClass}>
+                {(Object.keys(PAYERS) as (keyof typeof PAYERS)[]).map((k) => (
+                  <option key={k} value={k}>{PAYERS[k].label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="เลขบัญชีบริษัท SCB">
+              <input name="scb_account" inputMode="numeric" defaultValue={bank?.scb_account ?? ""} className={inputClass} />
+            </Field>
+            <Field label="รหัสบริษัท SCB">
+              <input name="scb_company_id" defaultValue={bank?.scb_company_id ?? ""} className={inputClass} />
+            </Field>
+            <Field label="เลขบัญชีบริษัท กสิกรไทย">
+              <input name="kbank_account" inputMode="numeric" defaultValue={bank?.kbank_account ?? ""} className={inputClass} />
+            </Field>
+            <Field label="รหัสบริษัท กสิกรไทย">
+              <input name="kbank_company_id" defaultValue={bank?.kbank_company_id ?? ""} className={inputClass} />
+            </Field>
+          </div>
+        </Card>
+        <div className="flex justify-end">
+          <SubmitButton>บันทึกบัญชีบริษัท</SubmitButton>
         </div>
       </form>
     </div>
