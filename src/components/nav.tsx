@@ -8,6 +8,7 @@ import {
   IconClock,
   IconFingerprint,
   IconHome,
+  IconMegaphone,
   IconMore,
   IconReceipt,
   IconShield,
@@ -27,6 +28,7 @@ const ICONS: Record<MenuIcon, (p: { className?: string }) => React.ReactElement>
   wallet: IconWallet,
   receipt: IconReceipt,
   shield: IconShield,
+  megaphone: IconMegaphone,
 };
 
 function isActive(path: string, href: string) {
