@@ -17,6 +17,16 @@ export async function saveSettings(formData: FormData) {
     if (!Number.isFinite(v) || v < 0) back("/payroll/settings", "error", "ตัวเลขไม่ถูกต้อง");
     update[k] = v;
   }
+  // หักเงินมาสาย ออกก่อน ขาดงาน
+  update.late_deduct = formData.get("late_deduct") === "on";
+  update.early_deduct = formData.get("early_deduct") === "on";
+  update.absent_deduct = formData.get("absent_deduct") === "on";
+  const lateAbsent = String(formData.get("late_absent_minutes") ?? "").trim();
+  if (lateAbsent !== "" && !(Number.isInteger(Number(lateAbsent)) && Number(lateAbsent) > 0)) {
+    back("/payroll/settings", "error", "นาทีที่นับเป็นขาดงานต้องเป็นเลขจำนวนเต็มมากกว่า 0 หรือเว้นว่าง");
+  }
+  update.late_absent_minutes = lateAbsent === "" ? null : Number(lateAbsent);
+
   // ช่องที่เป็นเปอร์เซ็นต์
   update.sso_rate = Number(formData.get("sso_rate_pct")) / 100;
   update.expense_rate = Number(formData.get("expense_rate_pct")) / 100;

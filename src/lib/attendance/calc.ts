@@ -103,6 +103,7 @@ export function evaluateDay(opts: {
   dataLoaded: boolean; // มีข้อมูลเวลาของวันนั้นเข้าระบบแล้ว (ใช้แยก "ขาดงาน" กับ "ยังไม่มีข้อมูล")
   otHours?: number;
   leave?: string | null; // ชื่อประเภทการลาที่อนุมัติแล้วของวันนั้น
+  lateAbsentMinutes?: number | null; // สายตั้งแต่กี่นาทีให้นับเป็นขาดงาน (ว่าง = ไม่ใช้)
 }): DayResult {
   const { date, shift, record } = opts;
   const base: DayResult = {
@@ -141,13 +142,16 @@ export function evaluateDay(opts: {
     if (outMin != null && end - outMin > 0) earlyMin = end - outMin;
   }
 
-  if (inMin == null || outMin == null) return { ...base, status: "incomplete", lateMin };
+  // สายเกินเกณฑ์ = ขาดงานทั้งวัน (ยังเก็บนาทีสายไว้แสดง)
+  const tooLate = !!shift && !!opts.lateAbsentMinutes && lateMin >= opts.lateAbsentMinutes;
+
+  if (inMin == null || outMin == null) return { ...base, status: tooLate ? "absent" : "incomplete", lateMin };
 
   const span = Math.max(0, outMin - inMin);
   const brk = shift && span > 5 * 60 ? shift.break_minutes : 0;
   const workedMin = Math.max(0, span - brk);
   const status: DayStatus = !shift ? (opts.reason === "no_shift" ? "present" : "off_work") : lateMin > 0 ? "late" : "present";
-  return { ...base, status, lateMin, earlyMin, workedMin };
+  return { ...base, status: tooLate ? "absent" : status, lateMin, earlyMin, workedMin };
 }
 
 export type Summary = {
@@ -172,8 +176,8 @@ export function summarize(days: DayResult[]): Summary {
     if (d.status === "leave") s.leaveDays++;
     if (d.status === "incomplete") s.incompleteDays++;
     if (d.status === "off_work") s.offWorkDays++;
-    if (d.earlyMin > 0) s.earlyDays++;
-    s.lateMin += d.lateMin;
+    if (d.earlyMin > 0 && d.status !== "absent") s.earlyDays++;
+    if (d.status !== "absent") s.lateMin += d.lateMin;
     s.workedMin += d.workedMin;
     s.otHours += d.otHours;
   }

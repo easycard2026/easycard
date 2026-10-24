@@ -5,7 +5,8 @@ import { todayBangkok } from "@/lib/format";
 import { fmtDays, leaveBalances } from "@/lib/leave";
 import { loadLeaveYear } from "@/lib/leave-load";
 import { loadAttendance } from "@/lib/attendance/load";
-import { fmtHours, summarize } from "@/lib/attendance/calc";
+import { summarize } from "@/lib/attendance/calc";
+import { attendanceTotals } from "@/lib/payroll/calc";
 import { Avatar, Card, EmptyState, PageHeader } from "@/components/ui";
 import { BackLink } from "@/components/notice";
 
@@ -115,7 +116,8 @@ export default async function LeaveSummaryPage({ searchParams }: { searchParams:
                   <tr className="border-b border-zinc-100 text-left text-xs text-zinc-400">
                     <th className="px-4 py-2.5 font-medium">พนักงาน</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">มาสาย (ครั้ง)</th>
-                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">สายรวม (ชม.)</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">สายรวม (นาที)</th>
+                    <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">ออกก่อน (นาที)</th>
                     <th className="whitespace-nowrap px-3 py-2.5 text-right font-medium">ขาดงาน (วัน)</th>
                     {cols.map((t) => (
                       <th key={t.code} className="whitespace-nowrap px-3 py-2.5 text-right font-medium">{t.name}</th>
@@ -125,14 +127,17 @@ export default async function LeaveSummaryPage({ searchParams }: { searchParams:
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
                   {att.employees.map((e) => {
-                    const s = summarize(att.grid.get(e.id) ?? []);
+                    const days = att.grid.get(e.id) ?? [];
+                    const s = summarize(days);
+                    const t = attendanceTotals(days);
                     const unpaid = unpaidBy.get(e.id) ?? 0;
                     return (
                       <tr key={e.id} className="hover:bg-zinc-50/60">
                         <EmpCell e={e} year={y} />
                         <td className="tabular px-3 py-2 text-right">{s.lateDays ? <span className="text-amber-700">{s.lateDays}</span> : dash}</td>
-                        <td className="tabular px-3 py-2 text-right">{s.lateMin ? fmtHours(s.lateMin) : dash}</td>
-                        <td className="tabular px-3 py-2 text-right">{s.absentDays ? <span className="font-medium text-rose-600">{s.absentDays}</span> : dash}</td>
+                        <td className="tabular px-3 py-2 text-right">{t.lateMin ? t.lateMin.toLocaleString("th-TH") : dash}</td>
+                        <td className="tabular px-3 py-2 text-right">{t.earlyMin ? t.earlyMin.toLocaleString("th-TH") : dash}</td>
+                        <td className="tabular px-3 py-2 text-right">{t.absentDays ? <span className="font-medium text-rose-600">{t.absentDays}</span> : dash}</td>
                         {cols.map((t) => {
                           const d = leaveBy.get(`${e.id}|${t.code}`) ?? 0;
                           return <td key={t.code} className="tabular px-3 py-2 text-right">{d ? fmtDays(d) : dash}</td>;
@@ -147,7 +152,7 @@ export default async function LeaveSummaryPage({ searchParams }: { searchParams:
           )}
         </Card>
         <p className="text-[11px] text-zinc-400">
-          ลาไม่รับค่าจ้างและลาเกินสิทธิ์ถูกหักในเงินเดือนอัตโนมัติ ส่วนการหักเงินมาสาย/ขาดงาน ฝ่ายบัญชีเพิ่มเองในสลิปตามระเบียบบริษัท
+          ระบบหักเงินเดือนอัตโนมัติ: ลาไม่รับค่าจ้าง ขาดงาน (ต่อวัน) มาสายและออกก่อน (ต่อนาที) เปิด/ปิดและตั้ง &quot;สายกี่นาทีนับเป็นขาดงาน&quot; ได้ที่ เงินเดือน → ค่าตั้งค่า
         </p>
       </>
     );

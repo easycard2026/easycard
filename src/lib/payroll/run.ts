@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { fetchAll } from "@/lib/supabase/fetch-all";
-import { calculatePayslip, type OtType, type PayrollSettings } from "./calc";
+import { loadAttendance } from "@/lib/attendance/load";
+import { todayBangkok } from "@/lib/format";
+import { attendanceTotals, calculatePayslip, type OtType, type PayrollSettings } from "./calc";
 
 type Num = number | string | null;
 const n = (v: Num) => (v == null ? 0 : Number(v));
@@ -27,6 +29,9 @@ export async function loadSettings(supabase: SupabaseClient): Promise<PayrollSet
     child_allowance: num("child_allowance"),
     parent_allowance: num("parent_allowance"),
     tax_brackets: s.tax_brackets as PayrollSettings["tax_brackets"],
+    late_deduct: s.late_deduct === true,
+    early_deduct: s.early_deduct === true,
+    absent_deduct: s.absent_deduct === true,
   };
 }
 
@@ -89,6 +94,11 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
     if (r.error) throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${r.error.message}`);
   }
 
+  // มาสาย ออกก่อน ขาดงาน ของงวดนี้ (คิดจากเวลาสแกน เทียบกับกะ วันลาและวันหยุด)
+  const att = settings.late_deduct || settings.early_deduct || settings.absent_deduct
+    ? await loadAttendance(supabase, period.start_date, period.end_date, todayBangkok())
+    : null;
+
   const salaryOf = latestSalaries(salaries.data ?? [], period.end_date);
   const existingByEmp = new Map((existing.data ?? []).map((p) => [p.employee_id as string, p]));
 
@@ -132,6 +142,7 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
       allowances: (allowances.data ?? []).filter((a) => a.employee_id === e.id).map((a) => ({ name: a.name, amount: n(a.amount), taxable: a.taxable })),
       manual,
       unpaidLeaveDays,
+      attendance: att ? attendanceTotals(att.grid.get(e.id) ?? []) : undefined,
       taxProfile: tp
         ? { spouse_no_income: tp.spouse_no_income, children: tp.children, parents: tp.parents, other_deductions: n(tp.other_deductions) }
         : null,

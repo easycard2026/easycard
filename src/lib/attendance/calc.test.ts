@@ -44,6 +44,14 @@ describe("evaluateDay", () => {
     expect(r.status).toBe("off_work");
     expect(r.workedMin).toBe(180);
   });
+  it("late past the absent threshold counts as absent", () => {
+    const rec = { clock_in: ts("2026-10-20", "10:00"), clock_out: ts("2026-10-20", "17:00") };
+    const r = evaluateDay({ ...base, date: "2026-10-20", shift: day, record: rec, lateAbsentMinutes: 120 });
+    expect(r.status).toBe("absent");
+    expect(r.lateMin).toBe(120);
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: day, record: rec, lateAbsentMinutes: 121 }).status).toBe("late");
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: day, record: rec }).status).toBe("late");
+  });
   it("one punch is incomplete", () =>
     expect(evaluateDay({ ...base, date: "2026-10-20", shift: day, record: { clock_in: ts("2026-10-20", "08:00"), clock_out: null } }).status).toBe("incomplete"));
 });

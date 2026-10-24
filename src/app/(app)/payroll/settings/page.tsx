@@ -28,7 +28,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="ค่าตั้งค่าการคำนวณ" description="อัตรา OT ประกันสังคม และภาษี แก้ได้เมื่อกฎหมายเปลี่ยน โดยไม่ต้องแก้โปรแกรม" />
       <Notice ok={sp.ok} error={sp.error} />
       <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800 ring-1 ring-inset ring-amber-200">
-        ตัวเลขตั้งต้นเขียนจากความรู้ทั่วไป ควรให้ฝ่ายบัญชีตรวจก่อนจ่ายเงินเดือนจริง โดยเฉพาะฐานประกันสังคม อัตรา OT และขั้นภาษี
+        ตัวเลขตั้งต้นเขียนจากความรู้ทั่วไป ควรให้ฝ่ายบัญชีตรวจก่อนจ่ายเงินเดือนจริง โดยเฉพาะฐานประกันสังคม อัตรา OT ขั้นภาษี และกติกาหักเงินมาสาย/ขาดงาน
       </p>
 
       <form action={saveSettings} className="space-y-4">
@@ -79,6 +79,30 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <input name={`rate_${i}`} type="number" min="0" max="100" step="any" defaultValue={b ? Math.round(b.rate * 10000) / 100 : ""} className={`${inputClass} h-10`} />
               </div>
             ))}
+          </div>
+        </Card>
+
+        <Card className="rise p-4">
+          <h2 className="font-semibold">หักเงินมาสาย ออกก่อน ขาดงาน</h2>
+          <p className="text-[13px] text-zinc-400">
+            คิดจากเวลาสแกนเทียบกับกะ · ต่อนาที = ค่าจ้างต่อชั่วโมง ÷ 60 · ขาดงาน = เงินเดือน ÷ วันต่อเดือน ต่อวัน · สายไม่เกินเวลาผ่อนผันของกะไม่นับ
+          </p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+            {(
+              [
+                ["late_deduct", "หักเงินมาสาย (ตามนาที)"],
+                ["early_deduct", "หักเงินออกก่อนเวลา (ตามนาที)"],
+                ["absent_deduct", "หักเงินขาดงาน (เต็มวัน)"],
+              ] as const
+            ).map(([k, label]) => (
+              <label key={k} className="flex h-10 items-center gap-2 rounded-lg border border-zinc-200 px-3 text-[13px] text-zinc-700">
+                <input type="checkbox" name={k} defaultChecked={s[k] !== false} className="size-4 accent-zinc-900" />
+                {label}
+              </label>
+            ))}
+            <Field label="สายตั้งแต่กี่นาที นับเป็นขาดงาน" hint="เว้นว่าง = ไม่นับ (หักเป็นนาทีอย่างเดียว)">
+              <input name="late_absent_minutes" type="number" min="1" step="1" defaultValue={s.late_absent_minutes ?? ""} placeholder="เช่น 120" className={inputClass} />
+            </Field>
           </div>
         </Card>
 

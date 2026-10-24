@@ -15,7 +15,7 @@ export type EmpRow = {
 
 // โหลดข้อมูลช่วงวันที่ แล้วคิดสถานะของทุกคนทุกวัน (RLS กรองคนที่มองเห็นให้แล้ว)
 export async function loadAttendance(supabase: SupabaseClient, from: string, to: string, today: string) {
-  const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays] = await Promise.all([
+  const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays, rules] = await Promise.all([
     fetchAll((a, b) => supabase.from("employees").select("id, code, first_name, last_name, start_date, default_shift_id, days_off, departments(name)").eq("active", true).order("code").range(a, b)),
     supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, late_grace_minutes"),
     fetchAll((a, b) => supabase.from("shift_assignments").select("employee_id, shift_id, work_date").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
@@ -27,7 +27,10 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
     fetchAll((a, b) => supabase.from("approved_leave_days").select("employee_id, leave_date, leave_type").gte("leave_date", from).lte("leave_date", to).order("employee_id").order("leave_date").range(a, b)),
     // วันหยุดตามปฏิทินของแต่ละคน (ตามตำแหน่ง) จากระบบลา ถ้ายังไม่มีให้ใช้ holidays ร่วมกันทุกคน
     fetchAll((a, b) => supabase.from("employee_holidays").select("employee_id, holiday_date, name").gte("holiday_date", from).lte("holiday_date", to).order("employee_id").order("holiday_date").range(a, b)),
+    // สายเกินกี่นาทีนับเป็นขาดงาน (ตั้งที่หน้าเงินเดือน → ค่าตั้งค่า)
+    supabase.from("payroll_settings").select("late_absent_minutes").maybeSingle(),
   ]);
+  const lateAbsentMinutes = rules.error ? null : ((rules.data?.late_absent_minutes as number | null) ?? null);
 
   const shiftById = new Map(((shifts.data ?? []) as Shift[]).map((s) => [s.id, s]));
   const assigned = new Map((assigns.data ?? []).map((a) => [`${a.employee_id}|${a.work_date}`, shiftById.get(a.shift_id) ?? null]));
@@ -80,6 +83,7 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
           dataLoaded: loadedDates.has(date),
           otHours: otBy.get(key) ?? 0,
           leave: leaveBy.get(key) ?? null,
+          lateAbsentMinutes,
         });
       }),
     );
