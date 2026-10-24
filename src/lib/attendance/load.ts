@@ -15,7 +15,7 @@ export type EmpRow = {
 
 // โหลดข้อมูลช่วงวันที่ แล้วคิดสถานะของทุกคนทุกวัน (RLS กรองคนที่มองเห็นให้แล้ว)
 export async function loadAttendance(supabase: SupabaseClient, from: string, to: string, today: string) {
-  const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays] = await Promise.all([
+  const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays, swaps] = await Promise.all([
     fetchAll((a, b) => supabase.from("employees").select("id, code, first_name, last_name, start_date, default_shift_id, days_off, departments(name)").eq("active", true).order("code").range(a, b)),
     supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, late_grace_minutes"),
     fetchAll((a, b) => supabase.from("shift_assignments").select("employee_id, shift_id, work_date").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
@@ -27,6 +27,8 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
     fetchAll((a, b) => supabase.from("approved_leave_days").select("employee_id, leave_date, leave_type").gte("leave_date", from).lte("leave_date", to).order("employee_id").order("leave_date").range(a, b)),
     // วันหยุดตามปฏิทินของแต่ละคน (ตามตำแหน่ง) จากระบบลา ถ้ายังไม่มีให้ใช้ holidays ร่วมกันทุกคน
     fetchAll((a, b) => supabase.from("employee_holidays").select("employee_id, holiday_date, name").gte("holiday_date", from).lte("holiday_date", to).order("employee_id").order("holiday_date").range(a, b)),
+    // แลกกะรายครั้งที่อนุมัติครบแล้ว (หัวหน้างาน + บัญชี)
+    fetchAll((a, b) => supabase.from("shift_swaps").select("work_date, requester_id, target_id, requester_shift_id, target_shift_id").eq("status", "approved").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
   ]);
 
   const shiftById = new Map(((shifts.data ?? []) as Shift[]).map((s) => [s.id, s]));
@@ -38,6 +40,12 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
   const loadedDates = new Set(((loaded.data ?? []) as unknown[]).map((d) => (typeof d === "string" ? d : Object.values(d as object)[0]) as string));
   const otBy = new Map<string, number>();
   for (const o of ots.data ?? []) otBy.set(`${o.employee_id}|${o.work_date}`, (otBy.get(`${o.employee_id}|${o.work_date}`) ?? 0) + Number(o.hours));
+  // คนขอได้กะเดิมของเพื่อน เพื่อนได้กะเดิมของคนขอ (null = วันหยุด)
+  const swapBy = new Map<string, Shift | null>();
+  for (const w of swaps.data ?? []) {
+    swapBy.set(`${w.requester_id}|${w.work_date}`, w.target_shift_id ? shiftById.get(w.target_shift_id) ?? null : null);
+    swapBy.set(`${w.target_id}|${w.work_date}`, w.requester_shift_id ? shiftById.get(w.requester_shift_id) ?? null : null);
+  }
   const leaveBy = new Map<string, string>();
   if (!leaves.error) for (const l of leaves.data ?? []) leaveBy.set(`${l.employee_id}|${l.leave_date}`, String(l.leave_type));
 
@@ -69,6 +77,7 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
           defaultShift: e.default_shift_id ? shiftById.get(e.default_shift_id) ?? null : null,
           daysOff: e.days_off,
           isHoliday: holidayOf(e.id, date) != null,
+          swapped: swapBy.has(key) ? swapBy.get(key)! : undefined,
         });
         const rec = recordBy.get(key);
         return evaluateDay({
@@ -85,5 +94,5 @@ export async function loadAttendance(supabase: SupabaseClient, from: string, to:
     );
   }
 
-  return { employees, dates, grid, holidayByDate, holidayOf, recordBy, hasAnyData: loadedDates.size > 0 };
+  return { employees, dates, grid, holidayByDate, holidayOf, recordBy, swapBy, hasAnyData: loadedDates.size > 0 };
 }
