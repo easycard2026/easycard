@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import Link from "next/link";
 import { PageHeader } from "@/components/ui";
 import { EmployeeList, type EmployeeRow } from "./employee-list";
+import { ExportMenu } from "./export-menu";
 
 export default async function EmployeesPage() {
   const { supabase, role, employeeId } = await getSession();
@@ -32,11 +33,14 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="พนักงาน" title={title} description={description}>
+        <div className="flex items-center gap-2">
         {(role === "ceo" || role === "accounting") && (
           <Link href="/employees/positions" className="inline-flex h-8 items-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-50">
             ตั้งค่าตำแหน่งงาน
           </Link>
         )}
+        <ExportMenu isAdmin={role === "ceo" || role === "accounting"} />
+        </div>
       </PageHeader>
       {error ? (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-700 ring-1 ring-rose-200">โหลดข้อมูลไม่สำเร็จ ลองรีเฟรชหน้าอีกครั้ง</p>
