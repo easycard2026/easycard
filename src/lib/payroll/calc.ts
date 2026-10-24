@@ -38,6 +38,8 @@ export type CalcInput = {
   ot: { ot_type: OtType; hours: number; actual_hours: number | null }[];
   allowances: { name: string; amount: number; taxable: boolean }[];
   manual: { kind: "earning" | "deduction"; label: string; amount: number; taxable: boolean }[];
+  // วันลาไม่รับค่าจ้างในงวดนี้ (ลาไม่รับค่าจ้าง หรือลาเกินสิทธิ์ที่ได้ค่าจ้าง)
+  unpaidLeaveDays?: number;
   taxProfile: { spouse_no_income: boolean; children: number; parents: number; other_deductions: number } | null;
   // ยอดสะสมจากสลิปในระบบของปีนี้ก่อนงวดนี้ และจำนวนเดือนที่มีสลิป
   ytdBefore: { income: number; tax: number; sso: number; months?: number };
@@ -171,6 +173,16 @@ export function calculatePayslip(input: CalcInput): CalcResult {
       deductions += m.amount;
       if (m.taxable) taxableDeductions += m.amount;
     }
+  }
+
+  // หักลาไม่รับค่าจ้าง: เงินเดือน ÷ วันต่อเดือน × วันที่ลา (ลดฐานภาษีและประกันสังคมด้วย)
+  const leaveDays = round2(Math.max(0, input.unpaidLeaveDays ?? 0));
+  if (leaveDays > 0) {
+    const daily = round2(monthlySalary / s.days_per_month);
+    const amount = round2(Math.min(salaryPaid, (monthlySalary / s.days_per_month) * leaveDays));
+    deductions += amount;
+    taxableDeductions += amount;
+    items.push({ kind: "deduction", code: "leave_unpaid", label: `ลาไม่รับค่าจ้าง (${leaveDays} วัน)`, quantity: leaveDays, rate: daily, amount, taxable: true });
   }
 
   const gross = round2(salaryPaid + otAmount + allowances + otherEarnings);

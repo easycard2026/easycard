@@ -136,3 +136,19 @@ describe("first month in the system mid-year", () => {
     expect(r.calc_note.months_estimated).toBe(0);
   });
 });
+
+describe("unpaid leave", () => {
+  it("deducts daily rate per unpaid day and lowers taxable income", () => {
+    const r = calculatePayslip(base({ unpaidLeaveDays: 2 }));
+    const item = r.items.find((i) => i.code === "leave_unpaid")!;
+    expect(item.amount).toBe(2000);
+    expect(r.deductions).toBe(2000);
+    expect(r.taxable_income).toBe(28000);
+    expect(r.sso_employee).toBe(875);
+    expect(r.net).toBe(30000 - 2000 - 875 - r.tax);
+  });
+  it("handles half days and no leave", () => {
+    expect(calculatePayslip(base({ unpaidLeaveDays: 0.5 })).deductions).toBe(500);
+    expect(calculatePayslip(base()).items.some((i) => i.code === "leave_unpaid")).toBe(false);
+  });
+});

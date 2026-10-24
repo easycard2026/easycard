@@ -52,7 +52,7 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
 
   const settings = await loadSettings(supabase);
 
-  const [emps, salaries, ots, allowances, taxProfiles, existing, prior] = await Promise.all([
+  const [emps, salaries, ots, allowances, taxProfiles, existing, prior, leaves] = await Promise.all([
     supabase.from("employees").select("id, code, first_name, last_name, start_date").eq("active", true).lte("start_date", period.end_date),
     supabase.from("salary_history").select("employee_id, monthly_salary, effective_date").lte("effective_date", period.end_date),
     supabase
@@ -69,8 +69,14 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
       .select("employee_id, taxable_income, tax, sso_employee, payroll_periods!inner(year, month)")
       .eq("payroll_periods.year", period.year)
       .lt("payroll_periods.month", period.month),
+    supabase
+      .from("approved_leave_days")
+      .select("employee_id, leave_date, unpaid_portion")
+      .gt("unpaid_portion", 0)
+      .gte("leave_date", period.start_date)
+      .lte("leave_date", period.end_date),
   ]);
-  for (const r of [emps, salaries, ots, allowances, taxProfiles, existing, prior]) {
+  for (const r of [emps, salaries, ots, allowances, taxProfiles, existing, prior, leaves]) {
     if (r.error) throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${r.error.message}`);
   }
 
@@ -101,6 +107,10 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
       .filter((i) => i.manual)
       .map((i) => ({ kind: i.kind, label: i.label, amount: n(i.amount), taxable: i.taxable }));
     const tp = (taxProfiles.data ?? []).find((t) => t.employee_id === e.id);
+    // วันลาไม่รับค่าจ้าง (ไม่นับวันก่อนเริ่มงาน เพราะเงินเดือนคิดตามวันอยู่แล้ว)
+    const unpaidLeaveDays = (leaves.data ?? [])
+      .filter((l) => l.employee_id === e.id && l.leave_date >= e.start_date)
+      .reduce((sum, l) => sum + n(l.unpaid_portion), 0);
 
     const r = calculatePayslip({
       settings,
@@ -112,6 +122,7 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
         .map((o) => ({ ot_type: o.ot_type as OtType, hours: n(o.hours), actual_hours: o.actual_hours == null ? null : n(o.actual_hours) })),
       allowances: (allowances.data ?? []).filter((a) => a.employee_id === e.id).map((a) => ({ name: a.name, amount: n(a.amount), taxable: a.taxable })),
       manual,
+      unpaidLeaveDays,
       taxProfile: tp
         ? { spouse_no_income: tp.spouse_no_income, children: tp.children, parents: tp.parents, other_deductions: n(tp.other_deductions) }
         : null,

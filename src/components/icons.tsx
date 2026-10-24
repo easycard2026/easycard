@@ -132,3 +132,19 @@ export const IconMore = (p: P) => (
     <circle cx="18.5" cy="12" r="1.2" />
   </Svg>
 );
+export const IconCalendar = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+    <path d="M3.5 10h17" />
+    <path d="M8 3v4M16 3v4" />
+    <path d="m9.5 15 1.8 1.8 3.4-3.6" />
+  </Svg>
+);
+export const IconPalm = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+    <path d="M3.5 10h17" />
+    <path d="M8 3v4M16 3v4" />
+    <circle cx="12" cy="15.2" r="2.2" />
+  </Svg>
+);
