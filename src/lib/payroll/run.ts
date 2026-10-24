@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { calculatePayslip, type OtType, type PayrollSettings } from "./calc";
 
 type Num = number | string | null;
@@ -55,20 +56,28 @@ export async function calculatePeriod(supabase: SupabaseClient, periodId: string
   const [emps, salaries, ots, allowances, taxProfiles, existing, prior] = await Promise.all([
     supabase.from("employees").select("id, code, first_name, last_name, start_date").eq("active", true).lte("start_date", period.end_date),
     supabase.from("salary_history").select("employee_id, monthly_salary, effective_date").lte("effective_date", period.end_date),
-    supabase
-      .from("ot_requests")
-      .select("employee_id, ot_type, hours, actual_hours")
-      .eq("status", "approved")
-      .gte("work_date", period.start_date)
-      .lte("work_date", period.end_date),
+    fetchAll((a, b) =>
+      supabase
+        .from("ot_requests")
+        .select("employee_id, ot_type, hours, actual_hours")
+        .eq("status", "approved")
+        .gte("work_date", period.start_date)
+        .lte("work_date", period.end_date)
+        .order("id")
+        .range(a, b),
+    ),
     supabase.from("recurring_allowances").select("employee_id, name, amount, taxable").eq("active", true),
     supabase.from("tax_profiles").select("*"),
     supabase.from("payslips").select("id, employee_id, payslip_items(kind, label, amount, taxable, manual)").eq("period_id", periodId),
-    supabase
-      .from("payslips")
-      .select("employee_id, taxable_income, tax, sso_employee, payroll_periods!inner(year, month)")
-      .eq("payroll_periods.year", period.year)
-      .lt("payroll_periods.month", period.month),
+    fetchAll((a, b) =>
+      supabase
+        .from("payslips")
+        .select("employee_id, taxable_income, tax, sso_employee, payroll_periods!inner(year, month)")
+        .eq("payroll_periods.year", period.year)
+        .lt("payroll_periods.month", period.month)
+        .order("id")
+        .range(a, b),
+    ),
   ]);
   for (const r of [emps, salaries, ots, allowances, taxProfiles, existing, prior]) {
     if (r.error) throw new Error(`โหลดข้อมูลไม่สำเร็จ: ${r.error.message}`);
