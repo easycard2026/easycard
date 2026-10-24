@@ -11,6 +11,7 @@ import {
   IconMore,
   IconReceipt,
   IconShield,
+  IconTarget,
   IconTimer,
   IconUpload,
   IconUsers,
@@ -27,6 +28,7 @@ const ICONS: Record<MenuIcon, (p: { className?: string }) => React.ReactElement>
   wallet: IconWallet,
   receipt: IconReceipt,
   shield: IconShield,
+  target: IconTarget,
 };
 
 function isActive(path: string, href: string) {
