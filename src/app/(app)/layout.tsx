@@ -10,7 +10,7 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
       <button
         title="ออกจากระบบ"
         aria-label="ออกจากระบบ"
-        className={`grid place-items-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${compact ? "size-9" : "size-8"}`}
+        className={`grid place-items-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900 ${compact ? "size-8" : "size-7"}`}
       >
         <IconLogout />
       </button>
@@ -26,25 +26,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       {/* จอคอม: เมนูด้านซ้าย */}
-      <aside className="fixed inset-y-0 left-0 z-20 hidden w-64 flex-col border-r border-zinc-200/80 bg-white md:flex">
-        <div className="px-5 pb-6 pt-6">
+      <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-zinc-200/80 bg-white md:flex">
+        <div className="px-4 pb-5 pt-5">
           <Logo />
         </div>
-        <div className="flex-1 overflow-y-auto px-3">
+        <div className="flex-1 overflow-y-auto px-2.5">
           <SideNav items={items} />
         </div>
-        <div className="m-3 flex items-center gap-3 rounded-2xl border border-zinc-200/80 p-3">
-          <Avatar first={first} last={rest.join(" ")} seed={name} />
+        <div className="m-2.5 flex items-center gap-2.5 rounded-xl border border-zinc-200/80 p-2.5">
+          <Avatar first={first} last={rest.join(" ")} seed={name} size="sm" />
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium text-zinc-900">{name}</p>
-            <p className="truncate text-xs text-zinc-500">{ROLE_LABEL[role]}</p>
+            <p className="truncate text-[13px] font-medium text-zinc-900">{name}</p>
+            <p className="truncate text-[11px] text-zinc-500">{ROLE_LABEL[role]}</p>
           </div>
           <SignOutButton />
         </div>
       </aside>
 
       {/* มือถือ: แถบด้านบน */}
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-4 py-3 backdrop-blur-xl md:hidden">
+      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-4 py-2.5 backdrop-blur-xl md:hidden">
         <Logo />
         <div className="flex items-center gap-1">
           <Avatar first={first} last={rest.join(" ")} seed={name} size="sm" />
@@ -52,7 +52,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </header>
 
-      <main className="px-4 pb-28 pt-6 sm:px-6 md:ml-64 md:px-10 md:pb-16 md:pt-10">
+      <main className="px-4 pb-24 pt-5 sm:px-6 md:ml-56 md:px-8 md:pb-10 md:pt-7">
         <div className="mx-auto max-w-6xl">{children}</div>
       </main>
 

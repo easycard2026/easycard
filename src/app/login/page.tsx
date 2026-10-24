@@ -12,9 +12,9 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   const notice = error === "noprofile" ? "บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อผู้ดูแลระบบ" : undefined;
 
   return (
-    <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+    <main className="grid min-h-screen lg:grid-cols-[1fr_1fr]">
       {/* ฝั่งซ้าย: แบรนด์ (จอใหญ่) */}
-      <section className="relative hidden overflow-hidden bg-zinc-950 p-12 text-white lg:flex lg:flex-col lg:justify-between">
+      <section className="relative hidden overflow-hidden bg-zinc-950 p-12 text-white lg:flex lg:flex-col lg:justify-between lg:p-10">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 opacity-[0.07]"
@@ -31,32 +31,32 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
         <div className="relative">
           <div className="flex items-center gap-2.5">
-            <span className="grid size-8 place-items-center rounded-[10px] bg-white text-zinc-900">
-              <svg viewBox="0 0 24 24" className="size-[18px]" fill="none" aria-hidden="true">
+            <span className="grid size-7 place-items-center rounded-[9px] bg-white text-zinc-900">
+              <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
                 <rect x="3.5" y="6" width="17" height="12" rx="2.5" stroke="currentColor" strokeWidth="1.8" />
                 <path d="M3.5 10.5h17" stroke="currentColor" strokeWidth="1.8" />
                 <circle cx="16.5" cy="14.5" r="1.2" fill="#6366f1" />
               </svg>
             </span>
-            <span className="text-[15px] font-semibold tracking-tight">
+            <span className="text-sm font-semibold tracking-tight">
               Easycard <span className="font-normal text-zinc-500">HR</span>
             </span>
           </div>
         </div>
 
         <div className="relative max-w-md">
-          <h2 className="text-[40px] font-semibold leading-[1.15] tracking-tight">
+          <h2 className="text-3xl font-semibold leading-[1.2] tracking-tight">
             งานบุคคลที่ง่าย
             <br />
             <span className="text-zinc-500">สำหรับทุกคนในทีม</span>
           </h2>
-          <ul className="mt-10 space-y-5">
+          <ul className="mt-8 space-y-4">
             {POINTS.map((p) => (
               <li key={p.t} className="flex gap-3">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
                 <div>
-                  <p className="font-medium">{p.t}</p>
-                  <p className="text-sm text-zinc-400">{p.d}</p>
+                  <p className="text-sm font-medium">{p.t}</p>
+                  <p className="text-[13px] text-zinc-400">{p.d}</p>
                 </div>
               </li>
             ))}
@@ -68,12 +68,12 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
       {/* ฝั่งขวา: ฟอร์ม */}
       <section className="flex items-center justify-center px-6 py-12">
-        <div className="rise w-full max-w-[360px]">
-          <Logo className="mb-12 lg:hidden" />
-          <h1 className="text-[28px] font-semibold tracking-tight">ยินดีต้อนรับกลับ</h1>
-          <p className="mb-8 mt-1.5 text-[15px] text-zinc-500">เข้าสู่ระบบด้วยบัญชีที่บริษัทสร้างให้</p>
+        <div className="rise w-full max-w-[320px]">
+          <Logo className="mb-10 lg:hidden" />
+          <h1 className="text-xl font-semibold tracking-tight">ยินดีต้อนรับกลับ</h1>
+          <p className="mb-6 mt-1 text-[13px] text-zinc-500">เข้าสู่ระบบด้วยบัญชีที่บริษัทสร้างให้</p>
           <LoginForm notice={notice} />
-          <p className="mt-8 text-center text-[13px] text-zinc-400">ลืมรหัสผ่าน? ติดต่อฝ่ายบุคคลหรือผู้ดูแลระบบ</p>
+          <p className="mt-6 text-center text-xs text-zinc-400">ลืมรหัสผ่าน? ติดต่อฝ่ายบุคคลหรือผู้ดูแลระบบ</p>
         </div>
       </section>
     </main>

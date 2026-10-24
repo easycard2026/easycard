@@ -23,12 +23,12 @@ function Timeline({ start, end }: { start: string; end: string }) {
   const parts = e > s ? [[s, e - s]] : [[s, 100 - s], [0, e]];
   return (
     <div>
-      <div className="relative h-2 overflow-hidden rounded-full bg-zinc-100">
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-zinc-100">
         {parts.map(([left, width], i) => (
           <span key={i} className="absolute inset-y-0 rounded-full bg-zinc-900" style={{ left: `${left}%`, width: `${width}%` }} />
         ))}
       </div>
-      <div className="tabular mt-1.5 flex justify-between text-[10px] text-zinc-400">
+      <div className="tabular mt-1 flex justify-between text-[9px] text-zinc-400">
         <span>00</span>
         <span>06</span>
         <span>12</span>
@@ -55,29 +55,29 @@ export default async function ShiftsPage() {
           <EmptyState title="ยังไม่มีกะการทำงาน" hint="CEO หรือฝ่ายบัญชีเพิ่มกะได้" />
         </Card>
       ) : (
-        <div className="rise grid gap-4 sm:grid-cols-2 lg:grid-cols-3" style={{ animationDelay: "60ms" }}>
+        <div className="rise grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" style={{ animationDelay: "60ms" }}>
           {shifts.map((s) => {
             const night = s.crosses_midnight || minutes(s.start_time) >= 18 * 60;
             return (
-              <Card key={s.id} className="flex flex-col gap-5 p-5 transition-all hover:border-zinc-300 hover:shadow-md">
+              <Card key={s.id} className="flex flex-col gap-3.5 p-4 transition-all hover:border-zinc-300 hover:shadow-md">
                 <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2.5">
                     <span
-                      className={`grid size-10 place-items-center rounded-xl ${
+                      className={`grid size-8 place-items-center rounded-lg ${
                         night ? "bg-indigo-50 text-indigo-600" : "bg-amber-50 text-amber-600"
                       }`}
                     >
-                      {night ? <IconMoon className="size-5" /> : <IconSun className="size-5" />}
+                      {night ? <IconMoon className="size-4" /> : <IconSun className="size-4" />}
                     </span>
                     <div>
-                      <p className="font-semibold">{s.name}</p>
-                      <p className="text-xs text-zinc-400">ทำงาน {duration(s.start_time, s.end_time, s.break_minutes)}</p>
+                      <p className="text-sm font-semibold">{s.name}</p>
+                      <p className="text-[11px] text-zinc-400">ทำงาน {duration(s.start_time, s.end_time, s.break_minutes)}</p>
                     </div>
                   </div>
                   {s.crosses_midnight && <Badge tone="blue">ข้ามเที่ยงคืน</Badge>}
                 </div>
 
-                <p className="tabular text-[28px] font-semibold leading-none tracking-tight">
+                <p className="tabular text-xl font-semibold leading-none tracking-tight">
                   {s.start_time.slice(0, 5)}
                   <span className="mx-2 font-light text-zinc-300">–</span>
                   {s.end_time.slice(0, 5)}
@@ -85,8 +85,8 @@ export default async function ShiftsPage() {
 
                 <Timeline start={s.start_time} end={s.end_time} />
 
-                <p className="flex items-center gap-1.5 border-t border-zinc-100 pt-4 text-[13px] text-zinc-500">
-                  <IconCoffee className="size-4 text-zinc-400" /> พักระหว่างกะ {s.break_minutes} นาที
+                <p className="flex items-center gap-1.5 border-t border-zinc-100 pt-3 text-xs text-zinc-500">
+                  <IconCoffee className="size-3.5 text-zinc-400" /> พักระหว่างกะ {s.break_minutes} นาที
                 </p>
               </Card>
             );

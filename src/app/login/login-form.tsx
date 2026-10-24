@@ -4,7 +4,7 @@ import { useActionState, useState } from "react";
 import { signIn } from "./actions";
 
 const input =
-  "h-11 w-full rounded-xl border border-zinc-200 bg-white px-3.5 text-[15px] outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5";
+  "h-10 w-full rounded-lg border border-zinc-200 bg-white px-3 text-sm outline-none transition placeholder:text-zinc-400 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5";
 
 export function LoginForm({ notice }: { notice?: string }) {
   const [state, action, pending] = useActionState(signIn, undefined);
@@ -12,13 +12,13 @@ export function LoginForm({ notice }: { notice?: string }) {
   const message = state?.error ?? notice;
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-4">
       <label className="block">
-        <span className="mb-1.5 block text-[13px] font-medium text-zinc-700">อีเมล</span>
+        <span className="mb-1 block text-xs font-medium text-zinc-700">อีเมล</span>
         <input name="email" type="email" autoComplete="username" required placeholder="name@company.com" className={input} />
       </label>
       <label className="block">
-        <span className="mb-1.5 block text-[13px] font-medium text-zinc-700">รหัสผ่าน</span>
+        <span className="mb-1 block text-xs font-medium text-zinc-700">รหัสผ่าน</span>
         <div className="relative">
           <input
             name="password"
@@ -38,14 +38,14 @@ export function LoginForm({ notice }: { notice?: string }) {
         </div>
       </label>
       {message && (
-        <p role="alert" className="rounded-xl bg-rose-50 px-3.5 py-2.5 text-sm text-rose-700 ring-1 ring-inset ring-rose-200">
+        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-[13px] text-rose-700 ring-1 ring-inset ring-rose-200">
           {message}
         </p>
       )}
       <button
         type="submit"
         disabled={pending}
-        className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-zinc-900 font-medium text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-60"
+        className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 text-sm font-medium text-white shadow-sm transition hover:bg-zinc-800 active:scale-[0.99] disabled:opacity-60"
       >
         {pending && <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
         {pending ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
