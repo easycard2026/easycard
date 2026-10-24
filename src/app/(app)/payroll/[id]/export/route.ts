@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { periodLabel } from "@/lib/payroll/calc";
+import { PAYERS, bankFileRows, type Payer } from "@/lib/payroll/bank";
+import { loadTransferPlan } from "@/lib/payroll/transfers";
 
 // ส่งออกไฟล์ CSV (เปิดใน Excel ได้ ภาษาไทยไม่เพี้ยน) ให้บัญชีนำไปยื่น/โอนเงิน
 const cell = (v: unknown) => {
@@ -20,8 +22,32 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (!profile || !["ceo", "accounting"].includes(profile.role)) return new NextResponse("Forbidden", { status: 403 });
 
-  const { data: period } = await supabase.from("payroll_periods").select("year, month, pay_date").eq("id", id).single();
+  const { data: period } = await supabase.from("payroll_periods").select("year, month, pay_date, end_date, status").eq("id", id).single();
   if (!period) return new NextResponse("Not found", { status: 404 });
+
+  if (type === "bank") {
+    // ไฟล์โอนเงิน: เฉพาะงวดที่ CEO อนุมัติแล้ว และข้อมูลบัญชีครบทุกคน เพื่อไม่ให้มีใครตกหล่น
+    const payer = req.nextUrl.searchParams.get("bank") as Payer;
+    if (!(payer in PAYERS)) return new NextResponse("Unknown bank", { status: 400 });
+    const text = (msg: string, status: number) => new NextResponse(msg, { status, headers: { "Content-Type": "text/plain; charset=utf-8" } });
+    if (period.status !== "approved" && period.status !== "closed") return text("ดาวน์โหลดไฟล์โอนเงินได้หลัง CEO อนุมัติเงินเดือนงวดนี้", 409);
+    const plan = await loadTransferPlan(supabase, id);
+    if (plan.problems.length) return text(`ยังมีพนักงาน ${plan.problems.length} คนที่ข้อมูลบัญชีไม่ครบ: ${plan.problems.map((p) => `${p.code} ${p.problem}`).join(", ")}`, 409);
+    const rows = plan.byPayer[payer];
+    if (!rows.length) return text(`ไม่มีรายการที่โอนจาก ${PAYERS[payer].label} ในงวดนี้`, 404);
+    const csvText = csv(
+      bankFileRows(payer, rows, {
+        companyName: plan.settings.company_name,
+        companyAccount: payer === "scb" ? plan.settings.scb_account : plan.settings.kbank_account,
+        companyId: payer === "scb" ? plan.settings.scb_company_id : plan.settings.kbank_company_id,
+        payDate: period.pay_date ?? period.end_date,
+      }),
+    );
+    const file = `payroll-${period.year}-${String(period.month).padStart(2, "0")}-${payer}.csv`;
+    return new NextResponse(csvText, {
+      headers: { "Content-Type": "text/csv; charset=utf-8", "Content-Disposition": `attachment; filename="${file}"` },
+    });
+  }
   const { data: settings } = await supabase.from("payroll_settings").select("sso_min_base, sso_max_base").single();
 
   const { data: slips } = await supabase

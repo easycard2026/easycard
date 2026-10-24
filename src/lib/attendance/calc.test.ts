@@ -12,6 +12,12 @@ describe("resolveShift", () => {
   it("Sunday off", () => expect(resolveShift({ date: "2026-10-25", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false }).reason).toBe("day_off"));
   it("holiday", () => expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: true }).reason).toBe("holiday"));
   it("default shift", () => expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false }).shift).toBe(day));
+  it("approved swap wins over assigned shift", () =>
+    expect(resolveShift({ date: "2026-10-23", assigned: day, defaultShift: day, daysOff: [0], isHoliday: false, swapped: night }).shift).toBe(night));
+  it("swap into a day off", () =>
+    expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false, swapped: null }).reason).toBe("day_off"));
+  it("swap onto a Sunday off means working", () =>
+    expect(resolveShift({ date: "2026-10-25", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false, swapped: day }).shift).toBe(day));
 });
 
 describe("evaluateDay", () => {

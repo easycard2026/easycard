@@ -51,3 +51,33 @@ export async function saveSettings(formData: FormData) {
   revalidatePath("/payroll/settings");
   back("/payroll/settings", "ok", "บันทึกค่าตั้งค่าแล้ว มีผลกับการคำนวณครั้งถัดไป");
 }
+
+export async function saveBankSettings(formData: FormData) {
+  const { supabase } = await getSession();
+  const text = (k: string) => String(formData.get(k) ?? "").trim() || null;
+  const digits = (k: string) => (text(k) ?? "").replace(/\D/g, "") || null;
+  const payer = text("other_bank_payer");
+  if (payer !== "scb" && payer !== "kbank") back("/payroll/settings", "error", "เลือกธนาคารที่ใช้โอนให้พนักงานธนาคารอื่น");
+  for (const k of ["scb_account", "kbank_account"]) {
+    const v = digits(k);
+    if (v && v.length !== 10) back("/payroll/settings", "error", "เลขบัญชีบริษัทต้องมี 10 หลัก");
+  }
+  const { error, count } = await supabase
+    .from("payroll_bank_settings")
+    .update(
+      {
+        company_name: text("company_name"),
+        scb_account: digits("scb_account"),
+        scb_company_id: text("scb_company_id"),
+        kbank_account: digits("kbank_account"),
+        kbank_company_id: text("kbank_company_id"),
+        other_bank_payer: payer,
+        updated_at: new Date().toISOString(),
+      },
+      { count: "exact" },
+    )
+    .eq("id", true);
+  if (error || !count) back("/payroll/settings", "error", "บันทึกบัญชีบริษัทไม่สำเร็จ");
+  revalidatePath("/payroll/settings");
+  back("/payroll/settings", "ok", "บันทึกบัญชีบริษัทแล้ว");
+}
