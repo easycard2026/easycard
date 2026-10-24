@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculatePayslip, paidOtHours, progressiveTax, ssoContribution, type CalcInput, type PayrollSettings } from "./calc";
+import { attendanceTotals, calculatePayslip, paidOtHours, progressiveTax, ssoContribution, type CalcInput, type PayrollSettings } from "./calc";
 
 const settings: PayrollSettings = {
   days_per_month: 30, hours_per_day: 8,
@@ -134,5 +134,56 @@ describe("first month in the system mid-year", () => {
       ytdBefore: { income: 270000, tax: 1481.22, sso: 7875, months: 9 },
     }));
     expect(r.calc_note.months_estimated).toBe(0);
+  });
+});
+
+describe("unpaid leave", () => {
+  it("deducts daily rate per unpaid day and lowers taxable income", () => {
+    const r = calculatePayslip(base({ unpaidLeaveDays: 2 }));
+    const item = r.items.find((i) => i.code === "leave_unpaid")!;
+    expect(item.amount).toBe(2000);
+    expect(r.deductions).toBe(2000);
+    expect(r.taxable_income).toBe(28000);
+    expect(r.sso_employee).toBe(875);
+    expect(r.net).toBe(30000 - 2000 - 875 - r.tax);
+  });
+  it("handles half days and no leave", () => {
+    expect(calculatePayslip(base({ unpaidLeaveDays: 0.5 })).deductions).toBe(500);
+    expect(calculatePayslip(base()).items.some((i) => i.code === "leave_unpaid")).toBe(false);
+  });
+});
+
+describe("attendance deductions", () => {
+  const on = { ...settings, late_deduct: true, early_deduct: true, absent_deduct: true };
+  it("totals late, early and absent from daily statuses", () => {
+    expect(
+      attendanceTotals([
+        { status: "late", lateMin: 15, earlyMin: 0 },
+        { status: "incomplete", lateMin: 5, earlyMin: 0 },
+        { status: "present", lateMin: 0, earlyMin: 30 },
+        { status: "absent", lateMin: 120, earlyMin: 0 },
+        { status: "absent", lateMin: 0, earlyMin: 0 },
+        { status: "leave", lateMin: 0, earlyMin: 0 },
+      ]),
+    ).toEqual({ lateMin: 20, earlyMin: 30, absentDays: 2 });
+  });
+  it("deducts per minute and per day", () => {
+    // 30,000 / 30 = 1,000 ต่อวัน, / 8 / 60 = 2.0833 ต่อนาที
+    const r = calculatePayslip(base({ settings: on, attendance: { lateMin: 60, earlyMin: 30, absentDays: 1 } }));
+    const by = (c: string) => r.items.find((i) => i.code === c)?.amount;
+    expect(by("absent")).toBe(1000);
+    expect(by("late")).toBe(125);
+    expect(by("early")).toBe(62.5);
+    expect(r.deductions).toBe(1187.5);
+    expect(r.taxable_income).toBe(28812.5);
+  });
+  it("skips deductions that are turned off", () => {
+    const r = calculatePayslip(base({ settings: { ...on, late_deduct: false }, attendance: { lateMin: 60, earlyMin: 0, absentDays: 0 } }));
+    expect(r.deductions).toBe(0);
+  });
+  it("never deducts more than the salary paid", () => {
+    const r = calculatePayslip(base({ settings: on, unpaidLeaveDays: 20, attendance: { lateMin: 0, earlyMin: 0, absentDays: 20 } }));
+    expect(r.deductions).toBe(30000);
+    expect(r.items.find((i) => i.code === "absent")?.amount).toBe(10000);
   });
 });

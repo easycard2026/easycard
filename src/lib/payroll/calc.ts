@@ -20,6 +20,10 @@ export type PayrollSettings = {
   child_allowance: number;
   parent_allowance: number;
   tax_brackets: TaxBracket[];
+  // หักเงินจากเวลาเข้าออก (ไม่ใส่ = ไม่หัก)
+  late_deduct?: boolean;
+  early_deduct?: boolean;
+  absent_deduct?: boolean;
 };
 
 export type OtType = "workday" | "holiday_work" | "holiday_ot";
@@ -38,6 +42,10 @@ export type CalcInput = {
   ot: { ot_type: OtType; hours: number; actual_hours: number | null }[];
   allowances: { name: string; amount: number; taxable: boolean }[];
   manual: { kind: "earning" | "deduction"; label: string; amount: number; taxable: boolean }[];
+  // วันลาไม่รับค่าจ้างในงวดนี้ (ลาไม่รับค่าจ้าง หรือลาเกินสิทธิ์ที่ได้ค่าจ้าง)
+  unpaidLeaveDays?: number;
+  // สรุปเวลาเข้าออกในงวด (จาก attendanceTotals)
+  attendance?: AttendanceTotals;
   taxProfile: { spouse_no_income: boolean; children: number; parents: number; other_deductions: number } | null;
   // ยอดสะสมจากสลิปในระบบของปีนี้ก่อนงวดนี้ และจำนวนเดือนที่มีสลิป
   ytdBefore: { income: number; tax: number; sso: number; months?: number };
@@ -73,6 +81,19 @@ export type CalcResult = {
   items: CalcItem[];
   calc_note: Record<string, number>;
 };
+
+export type AttendanceTotals = { lateMin: number; earlyMin: number; absentDays: number };
+
+// รวมนาทีสาย / ออกก่อน และวันขาดงาน จากสถานะรายวัน (วันที่นับเป็นขาดงานไม่หักนาทีซ้ำ)
+export function attendanceTotals(days: { status: string; lateMin: number; earlyMin: number }[]): AttendanceTotals {
+  const t: AttendanceTotals = { lateMin: 0, earlyMin: 0, absentDays: 0 };
+  for (const d of days) {
+    if (d.status === "absent") t.absentDays++;
+    else if (d.status === "late" || d.status === "incomplete") t.lateMin += d.lateMin;
+    if (d.status === "present" || d.status === "late") t.earlyMin += d.earlyMin;
+  }
+  return t;
+}
 
 export const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -172,6 +193,27 @@ export function calculatePayslip(input: CalcInput): CalcResult {
       if (m.taxable) taxableDeductions += m.amount;
     }
   }
+
+  // หักตามเวลา: ลาไม่รับค่าจ้าง ขาดงาน (ต่อวัน = เงินเดือน ÷ วันต่อเดือน) มาสาย ออกก่อน (ต่อนาที = ต่อชั่วโมง ÷ 60)
+  // ลดฐานภาษีและประกันสังคมด้วย และรวมกันไม่เกินเงินเดือนที่จ่ายงวดนี้
+  const dailyRate = monthlySalary / s.days_per_month;
+  const perMinute = dailyRate / s.hours_per_day / 60;
+  let timeDeducted = 0;
+  const timeDeduction = (code: string, label: string, qty: number, rate: number) => {
+    if (qty <= 0) return;
+    const amount = round2(Math.min(Math.max(0, salaryPaid - timeDeducted), rate * qty));
+    if (amount <= 0) return;
+    timeDeducted += amount;
+    deductions += amount;
+    taxableDeductions += amount;
+    items.push({ kind: "deduction", code, label, quantity: qty, rate: round2(rate), amount, taxable: true });
+  };
+  const leaveDays = round2(Math.max(0, input.unpaidLeaveDays ?? 0));
+  timeDeduction("leave_unpaid", `ลาไม่รับค่าจ้าง (${leaveDays} วัน)`, leaveDays, dailyRate);
+  const att = input.attendance;
+  if (att && s.absent_deduct) timeDeduction("absent", `ขาดงาน (${att.absentDays} วัน)`, att.absentDays, dailyRate);
+  if (att && s.late_deduct) timeDeduction("late", `มาสาย (${att.lateMin} นาที)`, att.lateMin, perMinute);
+  if (att && s.early_deduct) timeDeduction("early", `ออกก่อนเวลา (${att.earlyMin} นาที)`, att.earlyMin, perMinute);
 
   const gross = round2(salaryPaid + otAmount + allowances + otherEarnings);
   const taxableIncome = round2(Math.max(0, salaryPaid + otAmount + taxableAllowances + taxableOther - taxableDeductions));
