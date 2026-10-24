@@ -1,6 +1,8 @@
 # Easycard HR
 
-ระบบบริหารงานบุคคลและเงินเดือนสำหรับบริษัทประมาณ 50 คน หลายกะ (Next.js + Supabase)
+ระบบบริหารงานบุคคลและเงินเดือนสำหรับบริษัทประมาณ 50 คน หลายกะ (Next.js + Supabase + Cloudflare Workers)
+
+เว็บที่ใช้งาน: https://easycard-hr.easycardai2026.workers.dev
 
 ## สถานะ
 
