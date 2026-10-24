@@ -309,8 +309,9 @@ begin
   update public.leave_requests set status = 'cancelled', decided_by = auth.uid(), decided_at = now() where id = request_id;
 end $$;
 
-grant execute on all functions in schema private to authenticated;
 revoke execute on function private.leave_before_insert() from public, anon, authenticated;
+grant execute on function private.default_calendar(), private.calendar_of(uuid), private.is_holiday_for(uuid, date),
+  private.leave_quota(uuid, text), private.leave_dates(uuid, text, date, date) to authenticated;
 revoke execute on function public.decide_leave(uuid, boolean, text) from public, anon;
 revoke execute on function public.cancel_leave(uuid) from public, anon;
 grant execute on function public.decide_leave(uuid, boolean, text) to authenticated;
