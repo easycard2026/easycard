@@ -125,3 +125,10 @@ export const IconBadge = (p: P) => (
     <path d="m9.5 11 1.8 1.8L15 9" />
   </Svg>
 );
+export const IconMore = (p: P) => (
+  <Svg {...p}>
+    <circle cx="5.5" cy="12" r="1.2" />
+    <circle cx="12" cy="12" r="1.2" />
+    <circle cx="18.5" cy="12" r="1.2" />
+  </Svg>
+);
