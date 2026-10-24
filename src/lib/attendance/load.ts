@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { datesBetween, evaluateDay, resolveShift, type DayResult, type Shift } from "./calc";
 
 export type EmpRow = {
@@ -15,17 +16,17 @@ export type EmpRow = {
 // โหลดข้อมูลช่วงวันที่ แล้วคิดสถานะของทุกคนทุกวัน (RLS กรองคนที่มองเห็นให้แล้ว)
 export async function loadAttendance(supabase: SupabaseClient, from: string, to: string, today: string) {
   const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays] = await Promise.all([
-    supabase.from("employees").select("id, code, first_name, last_name, start_date, default_shift_id, days_off, departments(name)").eq("active", true).order("code"),
+    fetchAll((a, b) => supabase.from("employees").select("id, code, first_name, last_name, start_date, default_shift_id, days_off, departments(name)").eq("active", true).order("code").range(a, b)),
     supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, late_grace_minutes"),
-    supabase.from("shift_assignments").select("employee_id, shift_id, work_date").gte("work_date", from).lte("work_date", to),
+    fetchAll((a, b) => supabase.from("shift_assignments").select("employee_id, shift_id, work_date").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
     supabase.from("holidays").select("holiday_date, name").gte("holiday_date", from).lte("holiday_date", to),
-    supabase.from("attendance_days").select("employee_id, work_date, clock_in, clock_out, source, note").gte("work_date", from).lte("work_date", to),
+    fetchAll((a, b) => supabase.from("attendance_days").select("employee_id, work_date, clock_in, clock_out, source, note").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
     supabase.rpc("attendance_loaded_dates", { from_date: from, to_date: to }),
-    supabase.from("ot_requests").select("employee_id, work_date, hours").eq("status", "approved").gte("work_date", from).lte("work_date", to),
+    fetchAll((a, b) => supabase.from("ot_requests").select("employee_id, work_date, hours").eq("status", "approved").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
     // มาจากระบบลา ถ้ายังไม่มีตารางนี้จะได้ error แล้วข้ามไป
-    supabase.from("approved_leave_days").select("employee_id, leave_date, leave_type").gte("leave_date", from).lte("leave_date", to),
+    fetchAll((a, b) => supabase.from("approved_leave_days").select("employee_id, leave_date, leave_type").gte("leave_date", from).lte("leave_date", to).order("employee_id").order("leave_date").range(a, b)),
     // วันหยุดตามปฏิทินของแต่ละคน (ตามตำแหน่ง) จากระบบลา ถ้ายังไม่มีให้ใช้ holidays ร่วมกันทุกคน
-    supabase.from("employee_holidays").select("employee_id, holiday_date, name").gte("holiday_date", from).lte("holiday_date", to),
+    fetchAll((a, b) => supabase.from("employee_holidays").select("employee_id, holiday_date, name").gte("holiday_date", from).lte("holiday_date", to).order("employee_id").order("holiday_date").range(a, b)),
   ]);
 
   const shiftById = new Map(((shifts.data ?? []) as Shift[]).map((s) => [s.id, s]));
