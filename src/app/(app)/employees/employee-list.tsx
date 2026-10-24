@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { PROBATION_LABEL, PROBATION_TONE } from "@/lib/roles";
-import { thaiDate } from "@/lib/format";
+import { serviceLength, thaiDate } from "@/lib/format";
 import { Avatar, Badge, Card, EmptyState } from "@/components/ui";
 import { IconSearch } from "@/components/icons";
 
@@ -42,6 +44,7 @@ function Status({ e }: { e: EmployeeRow }) {
 }
 
 export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[]; showTools: boolean }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
 
@@ -103,23 +106,25 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
                   <th className="py-2 pl-4 pr-3 font-medium">พนักงาน</th>
                   <th className="px-3 py-2 font-medium">แผนก</th>
                   <th className="px-3 py-2 font-medium">วันเริ่มงาน</th>
+                  <th className="px-3 py-2 font-medium">อายุงาน</th>
                   <th className="py-2 pl-3 pr-4 font-medium">สถานะ</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100">
                 {rows.map((e) => (
-                  <tr key={e.id} className="transition-colors hover:bg-zinc-50/70">
+                  <tr key={e.id} onClick={() => router.push(`/employees/${e.id}`)} className="cursor-pointer transition-colors hover:bg-zinc-50/70">
                     <td className="py-2 pl-4 pr-3">
                       <div className="flex items-center gap-2.5">
                         <Avatar first={e.first_name} last={e.last_name} seed={e.code} size="sm" />
                         <div>
-                          <p className="font-medium text-zinc-900">{e.first_name} {e.last_name}</p>
+                          <Link href={`/employees/${e.id}`} className="font-medium text-zinc-900 hover:underline">{e.first_name} {e.last_name}</Link>
                           <p className="tabular text-[11px] text-zinc-400">{e.code}</p>
                         </div>
                       </div>
                     </td>
                     <td className="px-3 py-2 text-zinc-600">{e.department ?? <span className="text-zinc-300">-</span>}</td>
                     <td className="tabular px-3 py-2 text-zinc-600">{thaiDate(e.start_date)}</td>
+                    <td className="tabular px-3 py-2 text-zinc-600">{serviceLength(e.start_date)}</td>
                     <td className="py-2 pl-3 pr-4">
                       <Status e={e} />
                     </td>
@@ -131,7 +136,8 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
             {/* มือถือ: การ์ด */}
             <ul className="divide-y divide-zinc-100 md:hidden">
               {rows.map((e) => (
-                <li key={e.id} className="flex items-start gap-2.5 px-3.5 py-3">
+                <li key={e.id}>
+                  <Link href={`/employees/${e.id}`} className="flex items-start gap-2.5 px-3.5 py-3 active:bg-zinc-50">
                   <Avatar first={e.first_name} last={e.last_name} seed={e.code} size="sm" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
@@ -144,10 +150,11 @@ export function EmployeeList({ employees, showTools }: { employees: EmployeeRow[
                       <Badge tone={PROBATION_TONE[e.probation_status]}>{PROBATION_LABEL[e.probation_status]}</Badge>
                     </div>
                     <p className="mt-1 text-[11px] text-zinc-500">
-                      เริ่มงาน {thaiDate(e.start_date)}
+                      เริ่มงาน {thaiDate(e.start_date)} · อายุงาน {serviceLength(e.start_date)}
                       {(e.probation_status === "on_probation" || e.probation_status === "extended") && ` · ครบทดลองงาน ${thaiDate(e.probation_end_date)}`}
                     </p>
                   </div>
+                  </Link>
                 </li>
               ))}
             </ul>

@@ -1,9 +1,12 @@
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { PageHeader } from "@/components/ui";
 import { EmployeeList, type EmployeeRow } from "./employee-list";
 
 export default async function EmployeesPage() {
-  const { supabase, role } = await getSession();
+  const { supabase, role, employeeId } = await getSession();
+  // พนักงานทั่วไปมีแค่ข้อมูลตัวเอง ไปหน้าของตัวเองเลย (มีเอกสารด้วย)
+  if (role === "employee" && employeeId) redirect(`/employees/${employeeId}`);
   const { data, error } = await supabase
     .from("employees")
     .select("id, code, first_name, last_name, start_date, probation_end_date, probation_status, departments(name)")
