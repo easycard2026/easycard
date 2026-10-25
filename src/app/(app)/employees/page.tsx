@@ -39,6 +39,11 @@ export default async function EmployeesPage() {
             ตั้งค่าตำแหน่งงาน
           </Link>
         )}
+        {(role === "ceo" || role === "accounting") && (
+          <Link href="/employees/new" className="inline-flex h-8 items-center rounded-lg bg-zinc-900 px-3 text-xs font-medium text-white shadow-sm hover:bg-zinc-800">
+            + เพิ่มพนักงาน
+          </Link>
+        )}
         <ExportMenu isAdmin={role === "ceo" || role === "accounting"} />
         </div>
       </PageHeader>

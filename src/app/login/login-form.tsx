@@ -14,8 +14,8 @@ export function LoginForm({ notice }: { notice?: string }) {
   return (
     <form action={action} className="space-y-4">
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-zinc-700">อีเมล</span>
-        <input name="email" type="email" autoComplete="username" required placeholder="name@company.com" className={input} />
+        <span className="mb-1 block text-xs font-medium text-zinc-700">ชื่อผู้ใช้หรืออีเมล</span>
+        <input name="email" type="text" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" required placeholder="ชื่อผู้ใช้ หรือ name@company.com" className={input} />
       </label>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-zinc-700">รหัสผ่าน</span>
