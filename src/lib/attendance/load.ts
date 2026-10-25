@@ -17,7 +17,7 @@ export type EmpRow = {
 export async function loadAttendance(supabase: SupabaseClient, from: string, to: string, today: string) {
   const [emps, shifts, assigns, holidays, records, loaded, ots, leaves, empHolidays, swaps] = await Promise.all([
     fetchAll((a, b) => supabase.from("employees").select("id, code, first_name, last_name, start_date, default_shift_id, days_off, departments(name)").eq("active", true).order("code").range(a, b)),
-    supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, late_grace_minutes"),
+    supabase.from("shifts").select("id, name, start_time, end_time, break_minutes, break_start, late_grace_minutes"),
     fetchAll((a, b) => supabase.from("shift_assignments").select("employee_id, shift_id, work_date").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
     supabase.from("holidays").select("holiday_date, name").gte("holiday_date", from).lte("holiday_date", to),
     fetchAll((a, b) => supabase.from("attendance_days").select("employee_id, work_date, clock_in, clock_out, source, note").gte("work_date", from).lte("work_date", to).order("id").range(a, b)),
