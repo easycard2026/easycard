@@ -61,6 +61,13 @@ export const IconTimer = (p: P) => (
     <path d="M9.5 2.5h5" />
   </Svg>
 );
+export const IconTarget = (p: P) => (
+  <Svg {...p}>
+    <circle cx="12" cy="12" r="8.5" />
+    <circle cx="12" cy="12" r="4.5" />
+    <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+  </Svg>
+);
 export const IconWallet = (p: P) => (
   <Svg {...p}>
     <rect x="3" y="6" width="18" height="14" rx="2.5" />
