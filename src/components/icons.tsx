@@ -82,6 +82,14 @@ export const IconShield = (p: P) => (
     <path d="m9 12 2 2 4-4" />
   </Svg>
 );
+export const IconBuilding = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16" />
+    <path d="M16 9h2a2 2 0 0 1 2 2v10" />
+    <path d="M3 21h18" />
+    <path d="M8 7h4M8 11h4M8 15h4" />
+  </Svg>
+);
 export const IconLogout = (p: P) => (
   <Svg {...p}>
     <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />

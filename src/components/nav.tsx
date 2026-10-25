@@ -5,6 +5,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import type { MenuIcon, MenuItem } from "@/lib/roles";
 import {
+  IconBuilding,
   IconClock,
   IconFingerprint,
   IconHome,
@@ -29,6 +30,7 @@ const ICONS: Record<MenuIcon, (p: { className?: string }) => React.ReactElement>
   receipt: IconReceipt,
   shield: IconShield,
   megaphone: IconMegaphone,
+  building: IconBuilding,
 };
 
 function isActive(path: string, href: string) {

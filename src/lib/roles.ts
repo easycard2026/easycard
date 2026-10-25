@@ -7,7 +7,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   employee: "พนักงาน",
 };
 
-export type MenuIcon = "home" | "users" | "clock" | "upload" | "fingerprint" | "timer" | "wallet" | "receipt" | "shield" | "megaphone";
+export type MenuIcon = "home" | "users" | "clock" | "upload" | "fingerprint" | "timer" | "wallet" | "receipt" | "shield" | "megaphone" | "building";
 export type MenuItem = { href: string; label: string; icon: MenuIcon; roles: Role[]; soon?: boolean };
 
 // เมนูตามตารางสิทธิ์ในเอกสารออกแบบ; soon = ยังไม่ได้ทำ (ส่วนที่ 2-4)
@@ -21,6 +21,7 @@ export const MENU: MenuItem[] = [
   { href: "/ot", icon: "timer", label: "OT", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/payroll", icon: "wallet", label: "เงินเดือน", roles: ["ceo", "accounting"] },
   { href: "/payslips", icon: "receipt", label: "สลิปเงินเดือน", roles: ["ceo", "accounting", "manager", "employee"] },
+  { href: "/companies", icon: "building", label: "บริษัทในเครือ", roles: ["ceo"] },
   { href: "/users", icon: "shield", label: "จัดการผู้ใช้และ Role", roles: ["ceo"], soon: true },
 ];
 
