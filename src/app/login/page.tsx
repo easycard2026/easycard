@@ -9,7 +9,10 @@ const POINTS = [
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { error } = await searchParams;
-  const notice = error === "noprofile" ? "บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อผู้ดูแลระบบ" : undefined;
+  const notice =
+    error === "noprofile" ? "บัญชีนี้ยังไม่ได้ตั้งค่าสิทธิ์ ติดต่อผู้ดูแลระบบ"
+    : error === "inactive" ? "บัญชีนี้ถูกปิดใช้งาน ติดต่อผู้ดูแลระบบ"
+    : undefined;
 
   return (
     <main className="grid min-h-screen lg:grid-cols-[1fr_1fr]">

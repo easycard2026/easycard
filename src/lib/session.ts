@@ -11,10 +11,12 @@ export async function getSession() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role, display_name, employee_id")
+    .select("role, display_name, employee_id, active, must_change_password")
     .eq("id", user.id)
     .single();
   if (!profile) redirect("/login?error=noprofile");
+  // บัญชีถูกปิด: ออกจากระบบทันที
+  if (!profile.active) redirect("/auth/signout?reason=inactive");
 
   return {
     supabase,
@@ -22,5 +24,6 @@ export async function getSession() {
     role: profile.role as Role,
     name: profile.display_name ?? user.email ?? "",
     employeeId: profile.employee_id as string | null,
+    mustChangePassword: profile.must_change_password as boolean,
   };
 }

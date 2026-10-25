@@ -21,7 +21,7 @@ export const MENU: MenuItem[] = [
   { href: "/ot", icon: "timer", label: "OT", roles: ["ceo", "accounting", "manager", "employee"] },
   { href: "/payroll", icon: "wallet", label: "เงินเดือน", roles: ["ceo", "accounting"] },
   { href: "/payslips", icon: "receipt", label: "สลิปเงินเดือน", roles: ["ceo", "accounting", "manager", "employee"] },
-  { href: "/users", icon: "shield", label: "จัดการผู้ใช้และ Role", roles: ["ceo"], soon: true },
+  { href: "/users", icon: "shield", label: "ผู้ใช้และสิทธิ์", roles: ["ceo", "accounting"] },
 ];
 
 export const PROBATION_LABEL: Record<string, string> = {
