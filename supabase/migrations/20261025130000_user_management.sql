@@ -1,6 +1,8 @@
 -- จัดการผู้ใช้: สร้างบัญชี ผูกกับพนักงาน กำหนด Role รีเซ็ตรหัสผ่าน ปิด/เปิดบัญชี และเปลี่ยนรหัสผ่านเอง
 -- ทำในฐานข้อมูลทั้งหมด (security definer) จึงไม่ต้องเก็บ service role key ไว้ในเว็บ
 -- CEO จัดการได้ทุกบัญชี / บัญชีจัดการได้เฉพาะ Role ผู้จัดการและพนักงาน
+-- ทำงานกับบริษัทที่เปิดอยู่ (ต่อจาก multi_company): Role และพนักงานที่ผูก อ่าน/เขียนใน company_members
+-- การปิดบัญชี (active) และรหัสผ่านเป็นของบัญชีทั้งบัญชี มีผลทุกบริษัท
 
 alter table public.profiles
   add column if not exists email text,
@@ -11,9 +13,17 @@ update public.profiles p set email = u.email from auth.users u where u.id = p.id
 
 create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = '' as $$
+declare cid uuid;
 begin
-  insert into public.profiles (id, display_name, email)
-  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', new.email), new.email);
+  begin
+    cid := nullif(new.raw_user_meta_data->>'company_id', '')::uuid;
+  exception when others then cid := null;
+  end;
+  if cid is null or not exists (select 1 from public.companies where id = cid) then
+    cid := private.default_company_id();
+  end if;
+  insert into public.profiles (id, display_name, active_company_id, email)
+  values (new.id, coalesce(new.raw_user_meta_data->>'display_name', new.email), cid, new.email);
   return new;
 end $$;
 revoke execute on function public.handle_new_user() from public, anon, authenticated;
@@ -59,14 +69,35 @@ begin
   if length(pw) > 72 then raise exception 'รหัสผ่านยาวเกินไป'; end if;
 end $$;
 
+-- Role ของผู้ใช้ในบริษัทที่ฉันเปิดอยู่ (null = ไม่ได้อยู่บริษัทนี้)
+create or replace function private.member_role(uid uuid)
+returns public.app_role language sql stable security definer set search_path = '' as $$
+  select role from public.company_members where user_id = uid and company_id = private.my_company_id()
+$$;
+
+-- พนักงานต้องอยู่บริษัทที่เปิดอยู่ และยังไม่ผูกกับบัญชีอื่นในบริษัทนี้
 create or replace function private.check_employee_link(emp uuid, uid uuid)
 returns void language plpgsql stable security definer set search_path = '' as $$
 begin
   if emp is null then return; end if;
-  if not exists (select 1 from public.employees where id = emp) then raise exception 'ไม่พบข้อมูลพนักงานที่เลือก'; end if;
-  if exists (select 1 from public.profiles where employee_id = emp and id is distinct from uid) then
+  if not exists (select 1 from public.employees where id = emp and company_id = private.my_company_id()) then
+    raise exception 'ไม่พบข้อมูลพนักงานที่เลือกในบริษัทนี้';
+  end if;
+  if exists (select 1 from public.company_members
+             where company_id = private.my_company_id() and employee_id = emp and user_id is distinct from uid) then
     raise exception 'พนักงานคนนี้มีบัญชีผู้ใช้อยู่แล้ว';
   end if;
+end $$;
+
+-- บันทึก Role / พนักงานของบริษัทที่เปิดอยู่ ถ้าผู้ใช้กำลังเปิดบริษัทนี้ให้ profiles ตรงกันด้วย
+create or replace function private.set_membership(uid uuid, r public.app_role, emp uuid)
+returns void language plpgsql security definer set search_path = '' as $$
+declare cid uuid := private.my_company_id();
+begin
+  insert into public.company_members (company_id, user_id, role, employee_id) values (cid, uid, r, emp)
+    on conflict (company_id, user_id) do update set role = excluded.role, employee_id = excluded.employee_id;
+  update public.profiles set role = r, employee_id = emp
+    where id = uid and active_company_id = cid and (role, employee_id) is distinct from (r, emp);
 end $$;
 
 -- ตัดการเข้าสู่ระบบที่ค้างอยู่ของบัญชี
@@ -84,10 +115,13 @@ returns table (
 begin
   if not private.is_admin() then raise exception 'ไม่มีสิทธิ์'; end if;
   return query
-    select p.id, coalesce(p.email, u.email)::text, p.display_name, p.role, p.employee_id,
-           p.active, p.must_change_password, u.last_sign_in_at, p.created_at
-    from public.profiles p join auth.users u on u.id = p.id
-    order by p.active desc, p.role, p.display_name;
+    select p.id, coalesce(p.email, u.email)::text, p.display_name, m.role, m.employee_id,
+           p.active, p.must_change_password, u.last_sign_in_at, m.created_at
+    from public.company_members m
+    join public.profiles p on p.id = m.user_id
+    join auth.users u on u.id = m.user_id
+    where m.company_id = private.my_company_id()
+    order by p.active desc, m.role, p.display_name;
 end $$;
 
 create or replace function public.admin_create_user(
@@ -100,7 +134,10 @@ declare
 begin
   if not private.can_manage_role(p_role) then raise exception 'คุณไม่มีสิทธิ์สร้างบัญชี Role นี้'; end if;
   if mail is null or mail !~ '^[^@\s]+@[^@\s]+\.[^@\s]+$' then raise exception 'ชื่อผู้ใช้หรืออีเมลไม่ถูกต้อง'; end if;
-  if exists (select 1 from auth.users where lower(email) = mail) then raise exception 'มีบัญชีที่ใช้ชื่อนี้แล้ว'; end if;
+  if exists (select 1 from auth.users where lower(email) = mail) then
+    raise exception 'มีบัญชีที่ใช้ชื่อนี้แล้ว (ถ้าเป็นคนจากบริษัทอื่นในเครือ เพิ่มเข้าบริษัทได้ที่หน้า "บริษัทในเครือ")';
+  end if;
+  if private.my_company_id() is null then raise exception 'ยังไม่ได้เลือกบริษัท'; end if;
   perform private.check_password(p_password);
   perform private.check_employee_link(p_employee_id, null);
   if name is null and p_employee_id is not null then
@@ -115,45 +152,41 @@ begin
   ) values (
     '00000000-0000-0000-0000-000000000000', uid, 'authenticated', 'authenticated', mail,
     extensions.crypt(p_password, extensions.gen_salt('bf')), now(),
-    '{"provider":"email","providers":["email"]}', jsonb_build_object('display_name', coalesce(name, mail)),
+    '{"provider":"email","providers":["email"]}', jsonb_build_object('display_name', coalesce(name, mail), 'company_id', private.my_company_id()),
     now(), now(), '', '', '', '', '', '', '', ''
   );
   insert into auth.identities (id, user_id, provider_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
   values (gen_random_uuid(), uid, uid::text, 'email',
           jsonb_build_object('sub', uid::text, 'email', mail, 'email_verified', true), now(), now(), now());
 
-  update public.profiles
-    set role = p_role, employee_id = p_employee_id, display_name = coalesce(name, mail),
-        email = mail, must_change_password = true
-    where id = uid;
+  update public.profiles set display_name = coalesce(name, mail), email = mail, must_change_password = true where id = uid;
+  perform private.set_membership(uid, p_role, p_employee_id);
   return uid;
 end $$;
 
 create or replace function public.admin_update_user(
   p_user uuid, p_role public.app_role, p_employee_id uuid, p_display_name text
 ) returns void language plpgsql security definer set search_path = '' as $$
-declare cur public.profiles;
+declare cur public.app_role := private.member_role(p_user);
 begin
-  select * into cur from public.profiles where id = p_user for update;
-  if not found then raise exception 'ไม่พบบัญชีผู้ใช้'; end if;
-  if not (private.can_manage_role(cur.role) and private.can_manage_role(p_role)) then
+  if cur is null then raise exception 'ไม่พบบัญชีผู้ใช้ในบริษัทนี้'; end if;
+  if not (private.can_manage_role(cur) and private.can_manage_role(p_role)) then
     raise exception 'คุณไม่มีสิทธิ์แก้บัญชีนี้หรือให้ Role นี้';
   end if;
-  if p_user = auth.uid() and p_role <> cur.role then raise exception 'เปลี่ยน Role ของตัวเองไม่ได้'; end if;
+  if p_user = auth.uid() and p_role <> cur then raise exception 'เปลี่ยน Role ของตัวเองไม่ได้'; end if;
   perform private.check_employee_link(p_employee_id, p_user);
-  update public.profiles
-    set role = p_role, employee_id = p_employee_id,
-        display_name = coalesce(nullif(trim(p_display_name), ''), display_name)
-    where id = p_user;
+  perform private.set_membership(p_user, p_role, p_employee_id);
+  if nullif(trim(p_display_name), '') is not null then
+    update public.profiles set display_name = trim(p_display_name) where id = p_user;
+  end if;
 end $$;
 
 -- ตั้งรหัสผ่านชั่วคราวให้ผู้ใช้ (ผู้ใช้ต้องเปลี่ยนเองตอนเข้าครั้งถัดไป)
 create or replace function public.admin_reset_password(p_user uuid, p_password text)
 returns void language plpgsql security definer set search_path = '' as $$
-declare r public.app_role;
+declare r public.app_role := private.member_role(p_user);
 begin
-  select role into r from public.profiles where id = p_user;
-  if not found then raise exception 'ไม่พบบัญชีผู้ใช้'; end if;
+  if r is null then raise exception 'ไม่พบบัญชีผู้ใช้ในบริษัทนี้'; end if;
   if p_user = auth.uid() then raise exception 'เปลี่ยนรหัสผ่านของตัวเองที่หน้า "บัญชีของฉัน"'; end if;
   if not private.can_manage_role(r) then raise exception 'คุณไม่มีสิทธิ์รีเซ็ตรหัสผ่านบัญชีนี้'; end if;
   perform private.check_password(p_password);
@@ -165,10 +198,9 @@ end $$;
 
 create or replace function public.admin_set_active(p_user uuid, p_active boolean)
 returns void language plpgsql security definer set search_path = '' as $$
-declare r public.app_role;
+declare r public.app_role := private.member_role(p_user);
 begin
-  select role into r from public.profiles where id = p_user;
-  if not found then raise exception 'ไม่พบบัญชีผู้ใช้'; end if;
+  if r is null then raise exception 'ไม่พบบัญชีผู้ใช้ในบริษัทนี้'; end if;
   if p_user = auth.uid() then raise exception 'ปิดบัญชีของตัวเองไม่ได้'; end if;
   if not private.can_manage_role(r) then raise exception 'คุณไม่มีสิทธิ์เปิด/ปิดบัญชีนี้'; end if;
   update public.profiles set active = p_active where id = p_user;
@@ -206,9 +238,9 @@ grant execute on function public.admin_set_active(uuid, boolean) to authenticate
 grant execute on function public.change_my_password(text, text) to authenticated;
 
 revoke execute on function private.end_sessions(uuid) from public, anon, authenticated;
+revoke execute on function private.set_membership(uuid, public.app_role, uuid) from public, anon, authenticated;
+grant execute on function private.member_role(uuid) to authenticated;
 grant execute on function private.can_manage_role(public.app_role) to authenticated;
 grant execute on function private.check_password(text) to authenticated;
 grant execute on function private.check_employee_link(uuid, uuid) to authenticated;
 
--- แก้ profile ได้เฉพาะผ่านฟังก์ชันด้านบน (กันไม่ให้แก้ active / must_change_password ตรงๆ)
-drop policy if exists "ceo update profiles" on public.profiles;
