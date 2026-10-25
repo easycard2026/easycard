@@ -153,7 +153,12 @@ alter table public.positions drop constraint positions_name_key, add unique (com
 alter table public.employees drop constraint employees_code_key, add unique (company_id, code);
 alter table public.employees drop constraint employees_device_code_key, add unique (company_id, device_code);
 alter table public.shifts drop constraint shifts_name_key, add unique (company_id, name);
-alter table public.holidays drop constraint holidays_holiday_date_key, add unique (company_id, holiday_date);
+-- วันหยุด: ถ้าระบบลาเปลี่ยนเป็นปฏิทินวันหยุดไปแล้ว (ไม่มี constraint เดิม) ไม่ต้องทำ
+do $$ begin
+  if exists (select 1 from pg_constraint where conname = 'holidays_holiday_date_key') then
+    alter table public.holidays drop constraint holidays_holiday_date_key, add unique (company_id, holiday_date);
+  end if;
+end $$;
 alter table public.payroll_periods drop constraint payroll_periods_year_month_key, add unique (company_id, year, month);
 
 -- ค่าตั้งค่าเงินเดือน / บัญชีโอนเงิน: เดิมมีแถวเดียว → หนึ่งแถวต่อบริษัท
@@ -218,6 +223,30 @@ begin
          using (company_id = (select private.my_company_id()))
          with check (company_id = (select private.my_company_id()))', t);
   end loop;
+end $$;
+
+-- KPI (ถ้ามีตารางแล้ว): ทำแบบเดียวกับตารางอื่น
+do $$
+declare first_co uuid := private.default_company_id();
+begin
+  if to_regclass('public.kpi_items') is not null then
+    alter table public.kpi_items add column company_id uuid references public.companies(id);
+    alter table public.kpi_scores add column company_id uuid references public.companies(id);
+    update public.kpi_items set company_id = first_co;
+    update public.kpi_scores set company_id = first_co;
+    alter table public.kpi_items alter column company_id set not null;
+    alter table public.kpi_scores alter column company_id set not null;
+    create index on public.kpi_items (company_id);
+    create index on public.kpi_scores (company_id);
+    create trigger set_company before insert or update or delete on public.kpi_items
+      for each row execute function private.set_company('employee_id:employees', 'position_id:positions');
+    create trigger set_company before insert or update or delete on public.kpi_scores
+      for each row execute function private.set_company('item_id:kpi_items', 'employee_id:employees');
+    create policy "only active company" on public.kpi_items as restrictive for all to authenticated
+      using (company_id = (select private.my_company_id())) with check (company_id = (select private.my_company_id()));
+    create policy "only active company" on public.kpi_scores as restrictive for all to authenticated
+      using (company_id = (select private.my_company_id())) with check (company_id = (select private.my_company_id()));
+  end if;
 end $$;
 
 -- profiles: เห็นตัวเอง และคนที่อยู่บริษัทเดียวกับที่ฉันเปิดอยู่
