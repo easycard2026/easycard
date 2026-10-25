@@ -5,9 +5,21 @@ export type Shift = {
   name: string;
   start_time: string; // HH:MM[:SS]
   end_time: string;
-  break_minutes: number;
+  break_minutes: number; // 0 = ไม่มีเวลาพัก
+  break_start?: string | null; // เวลาเริ่มพัก ถ้าว่างจะหักพักเมื่อทำงานเกิน 5 ชม.
   late_grace_minutes: number;
 };
+
+// นาทีพักที่หักจากช่วงเวลาทำงานจริง (นาทีนับจากเที่ยงคืนของวันทำงาน)
+export function breakDeduction(shift: Shift | null, inMin: number, outMin: number) {
+  if (!shift || shift.break_minutes <= 0 || outMin <= inMin) return 0;
+  if (!shift.break_start) return outMin - inMin > 5 * 60 ? shift.break_minutes : 0;
+  // ช่วงพักของกะข้ามคืน ถ้าเวลาพักน้อยกว่าเวลาเข้ากะ แปลว่าพักหลังเที่ยงคืน
+  let bs = toMin(shift.break_start);
+  if (bs < toMin(shift.start_time)) bs += 1440;
+  const be = bs + shift.break_minutes;
+  return Math.max(0, Math.min(outMin, be) - Math.max(inMin, bs));
+}
 
 export type DayStatus =
   | "present" // มาทำงานตรงเวลา
@@ -146,7 +158,7 @@ export function evaluateDay(opts: {
   if (inMin == null || outMin == null) return { ...base, status: "incomplete", lateMin };
 
   const span = Math.max(0, outMin - inMin);
-  const brk = shift && span > 5 * 60 ? shift.break_minutes : 0;
+  const brk = breakDeduction(shift, inMin, outMin);
   const workedMin = Math.max(0, span - brk);
   const status: DayStatus = !shift ? (opts.reason === "no_shift" ? "present" : "off_work") : lateMin > 0 ? "late" : "present";
   return { ...base, status, lateMin, earlyMin, workedMin };
