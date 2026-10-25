@@ -12,6 +12,12 @@ describe("resolveShift", () => {
   it("Sunday off", () => expect(resolveShift({ date: "2026-10-25", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false }).reason).toBe("day_off"));
   it("holiday", () => expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: true }).reason).toBe("holiday"));
   it("default shift", () => expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false }).shift).toBe(day));
+  it("approved swap wins over assigned shift", () =>
+    expect(resolveShift({ date: "2026-10-23", assigned: day, defaultShift: day, daysOff: [0], isHoliday: false, swapped: night }).shift).toBe(night));
+  it("swap into a day off", () =>
+    expect(resolveShift({ date: "2026-10-23", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false, swapped: null }).reason).toBe("day_off"));
+  it("swap onto a Sunday off means working", () =>
+    expect(resolveShift({ date: "2026-10-25", assigned: null, defaultShift: day, daysOff: [0], isHoliday: false, swapped: day }).shift).toBe(day));
 });
 
 describe("evaluateDay", () => {
@@ -70,4 +76,27 @@ describe("viewRange", () => {
 describe("leave", () => {
   it("approved leave is not absent", () =>
     expect(evaluateDay({ ...base, date: "2026-10-20", shift: day, record: null, leave: "sick" }).status).toBe("leave"));
+});
+
+describe("break settings", () => {
+  const rec = (date: string, a: string, b: string, next = false) => ({
+    clock_in: ts(date, a),
+    clock_out: ts(next ? "2026-10-21" : date, b),
+  });
+  it("no break shift deducts nothing", () => {
+    const r = evaluateDay({ ...base, date: "2026-10-20", shift: { ...day, break_minutes: 0 }, record: rec("2026-10-20", "08:00", "17:00") });
+    expect(r.workedMin).toBe(540);
+  });
+  it("fixed break deducted only when inside worked time", () => {
+    const s = { ...day, break_start: "12:00:00" };
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: s, record: rec("2026-10-20", "08:00", "17:00") }).workedMin).toBe(480);
+    // ออกตอน 12:30 พักไปแค่ 30 นาที
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: s, record: rec("2026-10-20", "08:00", "12:30") }).workedMin).toBe(240);
+    // ครึ่งวันเช้า ไม่ถึงเวลาพัก
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: s, record: rec("2026-10-20", "08:00", "11:00") }).workedMin).toBe(180);
+  });
+  it("night shift break after midnight", () => {
+    const s = { ...night, break_start: "02:00:00" };
+    expect(evaluateDay({ ...base, date: "2026-10-20", shift: s, record: rec("2026-10-20", "22:00", "06:00", true) }).workedMin).toBe(420);
+  });
 });

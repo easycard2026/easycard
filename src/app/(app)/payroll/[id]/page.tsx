@@ -7,6 +7,8 @@ import { PAYROLL_STATUS, PAYROLL_STEPS, type PayrollStatus } from "@/lib/payroll
 import { Avatar, Badge, Card, EmptyState, PageHeader } from "@/components/ui";
 import { SubmitButton } from "@/components/form";
 import { BackLink, Notice, baht } from "@/components/notice";
+import { PAYERS, type Payer } from "@/lib/payroll/bank";
+import { loadTransferPlan } from "@/lib/payroll/transfers";
 import { deletePeriod, recalculate, setStatus } from "../actions";
 
 type Slip = {
@@ -61,6 +63,8 @@ function Stepper({ status }: { status: PayrollStatus }) {
   );
 }
 
+const transferReady = (s: PayrollStatus) => s === "approved" || s === "closed";
+
 export default async function PeriodPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -85,6 +89,9 @@ export default async function PeriodPage({ params, searchParams }: { params: Pro
   const slips = ((slipRows ?? []) as unknown as Slip[]).sort((a, b) => (a.employees?.code ?? "").localeCompare(b.employees?.code ?? ""));
   const withSalary = new Set((salaries ?? []).map((s) => s.employee_id));
   const missing = (emps ?? []).filter((e) => !withSalary.has(e.id));
+
+  const plan = slips.length ? await loadTransferPlan(supabase, id) : null;
+  const canTransfer = transferReady(period.status as PayrollStatus);
 
   const sum = (k: keyof Slip) => slips.reduce((s, x) => s + Number(x[k]), 0);
   const status = period.status as PayrollStatus;
@@ -156,6 +163,8 @@ export default async function PeriodPage({ params, searchParams }: { params: Pro
         <Stat label="ภาษีหัก ณ ที่จ่าย" value={baht(sum("tax"))} />
         <Stat label="รับสุทธิรวม" value={baht(sum("net"))} sub={`${slips.length} คน`} />
       </section>
+
+      {plan && <TransferCard id={id} plan={plan} ready={canTransfer} />}
 
       <Card className="rise overflow-hidden">
         <div className="flex flex-col gap-3 border-b border-zinc-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -239,5 +248,58 @@ export default async function PeriodPage({ params, searchParams }: { params: Pro
         </form>
       )}
     </div>
+  );
+}
+
+function TransferCard({ id, plan, ready }: { id: string; plan: Awaited<ReturnType<typeof loadTransferPlan>>; ready: boolean }) {
+  const blocked = plan.problems.length > 0;
+  return (
+    <Card className="rise p-4">
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between">
+        <h2 className="font-semibold">ไฟล์โอนเงินเดือนเข้าบัญชี</h2>
+        <Link href="/payroll/settings#bank" className="text-[13px] text-zinc-500 hover:text-zinc-900">ตั้งค่าบัญชีบริษัท</Link>
+      </div>
+      <p className="text-[13px] text-zinc-400">
+        {ready ? "ดาวน์โหลดแล้วนำไปอัปโหลดในระบบจ่ายเงินเดือนของธนาคาร" : "ดาวน์โหลดได้หลัง CEO อนุมัติเงินเดือนงวดนี้"}
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        {(Object.keys(PAYERS) as Payer[]).map((p) => {
+          const rows = plan.byPayer[p];
+          const total = rows.reduce((s, r) => s + r.amount, 0);
+          const other = rows.filter((r) => r.bankCode !== PAYERS[p].bankCode).length;
+          const enabled = ready && !blocked && rows.length > 0;
+          return (
+            <div key={p} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50/70 px-3 py-2.5 ring-1 ring-inset ring-zinc-100">
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-zinc-900">{PAYERS[p].label}</p>
+                <p className="tabular text-xs text-zinc-500">
+                  {rows.length} คน · ฿{baht(total)}
+                  {other > 0 && ` · ต่างธนาคาร ${other} คน`}
+                </p>
+              </div>
+              {enabled ? (
+                <a href={`/payroll/${id}/export?type=bank&bank=${p}`} className="shrink-0 rounded-lg bg-zinc-900 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-zinc-700">
+                  ดาวน์โหลด
+                </a>
+              ) : (
+                <span className="shrink-0 rounded-lg border border-zinc-200 px-3 py-1.5 text-[13px] text-zinc-300">ดาวน์โหลด</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {blocked && (
+        <div className="mt-3 rounded-lg bg-amber-50 px-3 py-2.5 text-[13px] text-amber-800 ring-1 ring-inset ring-amber-200">
+          <p className="font-medium">ข้อมูลบัญชียังไม่ครบ {plan.problems.length} คน ต้องแก้ก่อนจึงจะดาวน์โหลดได้</p>
+          <ul className="mt-1 space-y-0.5">
+            {plan.problems.map((x) => (
+              <li key={x.employeeId}>
+                <Link href={`/employees/${x.employeeId}`} className="underline">{x.code} {x.name}</Link> · {x.problem}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
   );
 }

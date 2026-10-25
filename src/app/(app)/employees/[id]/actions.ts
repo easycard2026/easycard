@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { back } from "@/lib/redirect";
 import { DOC_BUCKET } from "@/lib/documents";
+import { accountProblem, bankByCode, digitsOnly } from "@/lib/payroll/bank";
 
 export async function deleteDocument(formData: FormData) {
   const { supabase } = await getSession();
@@ -48,4 +49,25 @@ export async function updatePosition(formData: FormData) {
   revalidatePath(path);
   revalidatePath("/employees");
   back(path, "ok", "บันทึกตำแหน่งแล้ว");
+}
+
+export async function updateBank(formData: FormData) {
+  const { supabase } = await getSession();
+  const emp = String(formData.get("employee_id"));
+  const path = `/employees/${emp}`;
+  const bank_code = String(formData.get("bank_code") ?? "") || null;
+  const bank_account = digitsOnly(String(formData.get("bank_account") ?? "")) || null;
+  const bank_account_name = String(formData.get("bank_account_name") ?? "").trim() || null;
+  if (bank_code || bank_account) {
+    const problem = accountProblem(bank_code, bank_account);
+    if (problem) back(path, "error", problem);
+  }
+  const bank = bankByCode(bank_code);
+  const { error, count } = await supabase
+    .from("employees")
+    .update({ bank_code, bank_account, bank_account_name, bank_name: bank ? bank.name : null }, { count: "exact" })
+    .eq("id", emp);
+  if (error || !count) back(path, "error", "บันทึกบัญชีไม่สำเร็จ (เฉพาะ CEO และบัญชีแก้ได้)");
+  revalidatePath(path);
+  back(path, "ok", "บันทึกบัญชีรับเงินเดือนแล้ว");
 }

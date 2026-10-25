@@ -139,3 +139,10 @@ export const IconMore = (p: P) => (
     <circle cx="18.5" cy="12" r="1.2" />
   </Svg>
 );
+export const IconMegaphone = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 10v4a1 1 0 0 0 1 1h2l6 4V5L7 9H5a1 1 0 0 0-1 1z" />
+    <path d="M16.5 9a4 4 0 0 1 0 6" />
+    <path d="M19 6.5a7.5 7.5 0 0 1 0 11" />
+  </Svg>
+);

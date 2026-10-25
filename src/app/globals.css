@@ -62,3 +62,25 @@ body {
     animation: none;
   }
 }
+
+/* แถบข้อความประกาศเลื่อน */
+@keyframes ticker {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+.ticker-track {
+  animation: ticker 30s linear infinite;
+}
+.ticker:hover .ticker-track,
+.ticker:focus-within .ticker-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track {
+    animation: none;
+  }
+}
