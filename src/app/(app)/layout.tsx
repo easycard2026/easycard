@@ -8,6 +8,7 @@ import { tickerAnnouncements } from "@/lib/announcements";
 import Link from "next/link";
 import { Card } from "@/components/ui";
 import { PasswordForm } from "./account/password-form";
+import { CompanySwitcher } from "@/components/company-switcher";
 
 function SignOutButton({ compact = false }: { compact?: boolean }) {
   return (
@@ -24,7 +25,7 @@ function SignOutButton({ compact = false }: { compact?: boolean }) {
 }
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, role, name, mustChangePassword } = await getSession();
+  const { supabase, role, name, companies, companyId, mustChangePassword } = await getSession();
   const news = await tickerAnnouncements(supabase);
   const items = MENU.filter((m) => m.roles.includes(role));
   const [first, ...rest] = name.split(" ");
@@ -33,8 +34,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen">
       {/* จอคอม: เมนูด้านซ้าย */}
       <aside className="fixed inset-y-0 left-0 z-20 hidden w-56 flex-col border-r border-zinc-200/80 bg-white md:flex">
-        <div className="px-4 pb-5 pt-5">
+        <div className="space-y-3 px-4 pb-5 pt-5">
           <Logo />
+          <CompanySwitcher companies={companies} current={companyId} />
         </div>
         <div className="flex-1 overflow-y-auto px-2.5">
           <SideNav items={items} />
@@ -53,7 +55,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
       {/* มือถือ: แถบด้านบน */}
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-zinc-200/80 bg-white/85 px-4 py-2.5 backdrop-blur-xl md:hidden">
-        <Logo />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Logo />
+          <CompanySwitcher companies={companies} current={companyId} className="min-w-0 max-w-[10rem]" />
+        </div>
         <div className="flex items-center gap-1">
           <Link href="/account" title="บัญชีของฉัน" aria-label="บัญชีของฉัน">
             <Avatar first={first} last={rest.join(" ")} seed={name} size="sm" />
